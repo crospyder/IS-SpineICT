@@ -1,29 +1,139 @@
-<h1>{{ $item->name }}</h1>
+@extends('layouts.app')
 
-<p><strong>Partner:</strong> {{ $item->partner?->name }}</p>
-<p><strong>Tip:</strong> {{ $item->service_type }}</p>
-<p><strong>Domena:</strong> {{ $item->domain_name }}</p>
-<p><strong>Provider:</strong> {{ $item->provider }}</p>
-<p><strong>Registrar:</strong> {{ $item->registrar }}</p>
-<p><strong>Status:</strong> {{ $item->status }}</p>
-<p><strong>Periodika:</strong> {{ $item->renewal_period }}</p>
-<p><strong>Početak:</strong> {{ $item->starts_on }}</p>
-<p><strong>Istek:</strong> {{ $item->expires_on }}</p>
-<p><strong>Renewal:</strong> {{ $item->renewal_date }}</p>
-<p><strong>Admin link:</strong> {{ $item->admin_link }}</p>
-<p><strong>Način produljenja:</strong> {{ $item->renewal_method }}</p>
-<p><strong>Auto renew:</strong> {{ $item->auto_renew ? 'Da' : 'Ne' }}</p>
-<p><strong>Aktivno:</strong> {{ $item->is_active ? 'Da' : 'Ne' }}</p>
-<p><strong>Bilješke:</strong> {{ $item->notes }}</p>
+@section('title', 'Detalji usluge')
 
-<a href="/partner-services">Nazad</a>
-<a href="/partner-services/{{ $item->id }}/edit">Edit</a>
-<a href="/obligations/create?service_id={{ $item->id }}">
-    ➕ Dodaj obligation
-</a>
+@section('content')
 
-<form method="POST" action="/partner-services/{{ $item->id }}" style="margin-top:20px;">
-    @csrf
-    @method('DELETE')
-    <button type="submit">Delete</button>
-</form>
+<div class="max-w-5xl">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-semibold">Detalji usluge</h2>
+
+        <div class="flex gap-2">
+            <a href="{{ route('partner-services.edit', $partnerService) }}" class="app-button">
+                Uredi
+            </a>
+
+            <a href="{{ route('partner-services.index') }}" class="app-button-secondary">
+                Natrag
+            </a>
+        </div>
+    </div>
+
+    <div class="app-card p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div>
+                <div class="app-muted text-sm mb-1">Naziv</div>
+                <div class="font-medium">{{ $partnerService->name ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Partner</div>
+                <div class="font-medium">{{ $partnerService->partner?->name ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Tip usluge</div>
+                <div>{{ $partnerService->service_type ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Status</div>
+                <div>{{ $partnerService->status ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Domena</div>
+                <div>{{ $partnerService->domain_name ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Provider</div>
+                <div>{{ $partnerService->provider ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Registrar</div>
+                <div>{{ $partnerService->registrar ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Period obnove</div>
+                <div>{{ $partnerService->renewal_period ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Početak</div>
+                <div>{{ $partnerService->starts_on ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Istek</div>
+                <div>
+                    @if($partnerService->expires_on)
+                        @php
+                            $expires = \Carbon\Carbon::parse($partnerService->expires_on);
+                        @endphp
+
+                        @if($expires->isPast())
+                            <span class="app-badge badge-overdue">{{ $expires->format('Y-m-d') }}</span>
+                        @elseif($expires->lte(now()->addDays(30)))
+                            <span class="app-badge badge-soon">{{ $expires->format('Y-m-d') }}</span>
+                        @else
+                            <span class="app-badge badge-ok">{{ $expires->format('Y-m-d') }}</span>
+                        @endif
+                    @else
+                        -
+                    @endif
+                </div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Datum obnove</div>
+                <div>{{ $partnerService->renewal_date ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Način obnove</div>
+                <div>{{ $partnerService->renewal_method ?: '-' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Admin link</div>
+                <div>
+                    @if($partnerService->admin_link)
+                        <a href="{{ $partnerService->admin_link }}" target="_blank" class="app-link">
+                            {{ $partnerService->admin_link }}
+                        </a>
+                    @else
+                        -
+                    @endif
+                </div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Auto renew</div>
+                <div>{{ $partnerService->auto_renew ? 'Da' : 'Ne' }}</div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-1">Aktivna</div>
+                <div>
+                    @if($partnerService->is_active)
+                        <span class="app-badge badge-ok">Da</span>
+                    @else
+                        <span class="app-badge badge-overdue">Ne</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="md:col-span-2">
+                <div class="app-muted text-sm mb-1">Bilješke</div>
+                <div>{{ $partnerService->notes ?: '-' }}</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@endsection

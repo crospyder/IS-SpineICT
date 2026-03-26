@@ -116,4 +116,22 @@ class Obligation extends Model
     {
     return $this->status === 'done' || $this->completed_date !== null;
     }
+    public function getDueDateFormattedAttribute(): ?string
+    {
+    return $this->due_date
+        ? $this->due_date->format('d.m.Y')
+        : null;
+    }
+
+    public function getDaysRemainingAttribute(): ?int
+    {
+    if (!$this->due_date) {
+        return null;
+    }
+
+    return (int) now()->startOfDay()->diffInDays(
+        $this->due_date->copy()->startOfDay(),
+        false
+    );
+    }
 }

@@ -22,11 +22,13 @@ class Credential extends Model
         'notes',
     ];
 
+    protected $hidden = [
+        'password',
+    ];
+
     protected function casts(): array
     {
         return [
-            'password' => 'encrypted',
-            'secret_note' => 'encrypted',
             'valid_until' => 'date',
             'is_active' => 'boolean',
         ];
@@ -37,8 +39,13 @@ class Credential extends Model
         return $this->belongsTo(Partner::class);
     }
 
-    public function asset(): BelongsTo
+    public function setPasswordAttribute($value): void
     {
-        return $this->belongsTo(Asset::class);
+        $this->attributes['password'] = filled($value) ? encrypt($value) : null;
+    }
+
+    public function getPasswordAttribute($value): ?string
+    {
+        return filled($value) ? decrypt($value) : null;
     }
 }

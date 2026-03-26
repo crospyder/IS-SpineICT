@@ -23,11 +23,11 @@ class PartnerController extends Controller
         }
 
         if (request('active') === '1') {
-            $query->where('is_active', true);
+            $query->where('is_active', 1);
         }
 
         if (request('active') === '0') {
-            $query->where('is_active', false);
+            $query->where('is_active', 0);
         }
 
         $partners = $query
@@ -67,11 +67,29 @@ class PartnerController extends Controller
     }
 
     public function show(string $id)
-    {
-        $partner = Partner::findOrFail($id);
+{
+    $partner = Partner::with([
+        'contacts' => function ($query) {
+            $query->orderByDesc('is_primary')->orderBy('name');
+        },
+        'credentials' => function ($query) {
+            $query->orderBy('title');
+        },
+        'services' => function ($query) {
+            $query->orderBy('expires_on')->orderBy('name');
+        },
+        'obligations' => function ($query) {
+            $query->orderByRaw("
+                CASE
+                    WHEN completed_date IS NULL AND due_date IS NOT NULL THEN 0
+                    ELSE 1
+                END
+            ")->orderBy('due_date');
+        },
+    ])->findOrFail($id);
 
-        return view('partners.show', compact('partner'));
-    }
+    return view('partners.show', compact('partner'));
+}
 
     public function edit(string $id)
     {

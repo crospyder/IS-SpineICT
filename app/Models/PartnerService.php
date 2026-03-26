@@ -78,4 +78,22 @@ class PartnerService extends Model
     {
         return $this->hasMany(WorkLog::class);
     }
+    public function getExpiresOnFormattedAttribute(): ?string
+    {
+    return $this->expires_on
+        ? $this->expires_on->format('d.m.Y')
+        : null;
+    }
+
+    public function getDaysRemainingAttribute(): ?int
+    {
+    if (!$this->expires_on) {
+        return null;
+    }
+
+    return (int) now()->startOfDay()->diffInDays(
+        $this->expires_on->copy()->startOfDay(),
+        false
+    );
+    }
 }
