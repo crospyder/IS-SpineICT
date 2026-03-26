@@ -16,3 +16,6 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::resource('partners', PartnerController::class);
 Route::resource('partner-services', PartnerServiceController::class);
 Route::resource('obligations', ObligationController::class);
+
+Route::patch('/obligations/{obligation}/complete', [ObligationController::class, 'complete'])
+    ->name('obligations.complete');

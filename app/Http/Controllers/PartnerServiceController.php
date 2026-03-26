@@ -12,9 +12,34 @@ class PartnerServiceController extends Controller
     {
         $query = PartnerService::with('partner');
 
+        if ($q = request('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('service_type', 'like', "%{$q}%")
+                    ->orWhere('domain_name', 'like', "%{$q}%")
+                    ->orWhere('provider', 'like', "%{$q}%")
+                    ->orWhere('registrar', 'like', "%{$q}%")
+                    ->orWhere('status', 'like', "%{$q}%");
+            })->orWhereHas('partner', function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%");
+            });
+        }
+
+        if ($partnerId = request('partner_id')) {
+            $query->where('partner_id', $partnerId);
+        }
+
         if (request('expiring')) {
             $query->whereNotNull('expires_on')
                   ->whereDate('expires_on', '<=', now()->addDays(30));
+        }
+
+        if (request('active') === '1') {
+            $query->where('is_active', true);
+        }
+
+        if (request('active') === '0') {
+            $query->where('is_active', false);
         }
 
         $partnerServices = $query
@@ -22,7 +47,9 @@ class PartnerServiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('partner-services.index', compact('partnerServices'));
+        $partners = Partner::orderBy('name')->get();
+
+        return view('partner-services.index', compact('partnerServices', 'partners'));
     }
 
     public function create()

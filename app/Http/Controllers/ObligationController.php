@@ -13,8 +13,32 @@ class ObligationController extends Controller
     {
         $query = Obligation::with(['partner', 'partnerService']);
 
+        if ($q = request('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('title', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%")
+                    ->orWhere('status', 'like', "%{$q}%")
+                    ->orWhere('priority', 'like', "%{$q}%");
+            })->orWhereHas('partner', function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%");
+            })->orWhereHas('partnerService', function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%");
+            });
+        }
+
+        if ($partnerId = request('partner_id')) {
+            $query->where('partner_id', $partnerId);
+        }
+
         if (request('status') === 'open') {
             $query->where('status', 'open');
+        }
+
+        if (request('status') === 'done') {
+            $query->where(function ($sub) {
+                $sub->where('status', 'done')
+                    ->orWhereNotNull('completed_date');
+            });
         }
 
         if (request('due') === 'soon') {
@@ -34,7 +58,9 @@ class ObligationController extends Controller
             ->orderBy('due_date')
             ->get();
 
-        return view('obligations.index', compact('obligations'));
+        $partners = Partner::orderBy('name')->get();
+
+        return view('obligations.index', compact('obligations', 'partners'));
     }
 
     public function create()
@@ -103,5 +129,17 @@ class ObligationController extends Controller
         Obligation::findOrFail($id)->delete();
 
         return redirect()->route('obligations.index');
+    }
+
+    public function complete(string $id)
+    {
+        $obligation = Obligation::findOrFail($id);
+
+        $obligation->update([
+            'status' => 'done',
+            'completed_date' => now(),
+        ]);
+
+        return back();
     }
 }

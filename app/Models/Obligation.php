@@ -114,6 +114,6 @@ class Obligation extends Model
 
     public function isCompleted(): bool
     {
-        return !is_null($this->completed_date);
+    return $this->status === 'done' || $this->completed_date !== null;
     }
 }

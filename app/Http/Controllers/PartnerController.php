@@ -9,7 +9,30 @@ class PartnerController extends Controller
 {
     public function index()
     {
-        $partners = Partner::orderBy('name')->get();
+        $query = Partner::query();
+
+        if ($q = request('q')) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('legal_name', 'like', "%{$q}%")
+                    ->orWhere('oib', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%")
+                    ->orWhere('city', 'like', "%{$q}%");
+            });
+        }
+
+        if (request('active') === '1') {
+            $query->where('is_active', true);
+        }
+
+        if (request('active') === '0') {
+            $query->where('is_active', false);
+        }
+
+        $partners = $query
+            ->orderBy('name')
+            ->get();
 
         return view('partners.index', compact('partners'));
     }

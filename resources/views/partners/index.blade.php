@@ -12,6 +12,29 @@
     </a>
 </div>
 
+<form method="GET" action="{{ route('partners.index') }}" class="app-card p-4 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="md:col-span-2">
+            <label class="app-label" for="q">Pretraga</label>
+            <input type="text" id="q" name="q" class="app-input" value="{{ request('q') }}" placeholder="Naziv, OIB, email, telefon, grad...">
+        </div>
+
+        <div>
+            <label class="app-label" for="active">Status</label>
+            <select id="active" name="active" class="app-select">
+                <option value="">Svi</option>
+                <option value="1" {{ request('active') === '1' ? 'selected' : '' }}>Aktivni</option>
+                <option value="0" {{ request('active') === '0' ? 'selected' : '' }}>Neaktivni</option>
+            </select>
+        </div>
+
+        <div class="flex items-end gap-2">
+            <button type="submit" class="app-button">Filtriraj</button>
+            <a href="{{ route('partners.index') }}" class="app-button-secondary">Reset</a>
+        </div>
+    </div>
+</form>
+
 <div class="app-card overflow-hidden">
     <table class="app-table">
         <thead>
