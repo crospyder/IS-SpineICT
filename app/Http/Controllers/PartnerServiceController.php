@@ -10,23 +10,26 @@ class PartnerServiceController extends Controller
 {
     public function index()
     {
-    $query = PartnerService::with('partner');
+        $query = PartnerService::with('partner');
 
-    // filter: ističe unutar 30 dana
-    if (request('expiring')) {
-        $query->whereNotNull('expires_on')
-              ->whereDate('expires_on', '<=', now()->addDays(30));
+        if (request('expiring')) {
+            $query->whereNotNull('expires_on')
+                  ->whereDate('expires_on', '<=', now()->addDays(30));
+        }
+
+        $partnerServices = $query
+            ->orderBy('expires_on')
+            ->orderBy('name')
+            ->get();
+
+        return view('partner-services.index', compact('partnerServices'));
     }
-
-    $items = $query->orderBy('expires_on')->get();
-
-    return view('partner_services.index', compact('items'));
-}
 
     public function create()
     {
         $partners = Partner::orderBy('name')->get();
-        return view('partner_services.create', compact('partners'));
+
+        return view('partner-services.create', compact('partners'));
     }
 
     public function store(Request $request)
@@ -55,21 +58,22 @@ class PartnerServiceController extends Controller
 
         PartnerService::create($data);
 
-        return redirect('/partner-services');
+        return redirect()->route('partner-services.index');
     }
 
     public function show(string $id)
     {
-        $item = PartnerService::with('partner')->findOrFail($id);
-        return view('partner_services.show', compact('item'));
+        $partnerService = PartnerService::with('partner')->findOrFail($id);
+
+        return view('partner-services.show', compact('partnerService'));
     }
 
     public function edit(string $id)
     {
-        $item = PartnerService::findOrFail($id);
+        $partnerService = PartnerService::findOrFail($id);
         $partners = Partner::orderBy('name')->get();
 
-        return view('partner_services.edit', compact('item', 'partners'));
+        return view('partner-services.edit', compact('partnerService', 'partners'));
     }
 
     public function update(Request $request, string $id)
@@ -96,17 +100,17 @@ class PartnerServiceController extends Controller
         $data['auto_renew'] = $request->boolean('auto_renew');
         $data['is_active'] = $request->boolean('is_active', true);
 
-        $item = PartnerService::findOrFail($id);
-        $item->update($data);
+        $partnerService = PartnerService::findOrFail($id);
+        $partnerService->update($data);
 
-        return redirect('/partner-services/' . $item->id);
+        return redirect()->route('partner-services.show', $partnerService);
     }
 
     public function destroy(string $id)
     {
-        $item = PartnerService::findOrFail($id);
-        $item->delete();
+        $partnerService = PartnerService::findOrFail($id);
+        $partnerService->delete();
 
-        return redirect('/partner-services');
+        return redirect()->route('partner-services.index');
     }
 }

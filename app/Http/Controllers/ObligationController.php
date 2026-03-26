@@ -18,18 +18,23 @@ class ObligationController extends Controller
         }
 
         if (request('due') === 'soon') {
-            $query->whereNotNull('due_date')
-                  ->whereDate('due_date', '<=', now()->addDays(7));
+            $query->whereNull('completed_date')
+                  ->whereNotNull('due_date')
+                  ->whereDate('due_date', '<=', now()->addDays(7))
+                  ->whereDate('due_date', '>=', now());
         }
 
         if (request('due') === 'overdue') {
-            $query->whereNotNull('due_date')
+            $query->whereNull('completed_date')
+                  ->whereNotNull('due_date')
                   ->whereDate('due_date', '<', now());
         }
 
-        $items = $query->orderBy('due_date')->get();
+        $obligations = $query
+            ->orderBy('due_date')
+            ->get();
 
-        return view('obligations.index', compact('items'));
+        return view('obligations.index', compact('obligations'));
     }
 
     public function create()
@@ -54,21 +59,22 @@ class ObligationController extends Controller
 
         Obligation::create($data);
 
-        return redirect('/obligations');
+        return redirect()->route('obligations.index');
     }
 
     public function show(string $id)
     {
-        $item = Obligation::with(['partner', 'partnerService'])->findOrFail($id);
-        return view('obligations.show', compact('item'));
+        $obligation = Obligation::with(['partner', 'partnerService'])->findOrFail($id);
+
+        return view('obligations.show', compact('obligation'));
     }
 
     public function edit(string $id)
     {
-        $item = Obligation::findOrFail($id);
+        $obligation = Obligation::findOrFail($id);
 
         return view('obligations.edit', [
-            'item' => $item,
+            'obligation' => $obligation,
             'partners' => Partner::orderBy('name')->get(),
             'services' => PartnerService::orderBy('name')->get(),
         ]);
@@ -86,15 +92,16 @@ class ObligationController extends Controller
             'due_date' => 'nullable|date',
         ]);
 
-        $item = Obligation::findOrFail($id);
-        $item->update($data);
+        $obligation = Obligation::findOrFail($id);
+        $obligation->update($data);
 
-        return redirect('/obligations/' . $item->id);
+        return redirect()->route('obligations.index');
     }
 
     public function destroy(string $id)
     {
         Obligation::findOrFail($id)->delete();
-        return redirect('/obligations');
+
+        return redirect()->route('obligations.index');
     }
 }

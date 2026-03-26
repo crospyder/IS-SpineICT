@@ -1,28 +1,79 @@
-<h1>Novi obligation</h1>
+@extends('layouts.app')
 
-<form method="POST" action="/obligations">
-@csrf
+@section('title', 'Nova obveza')
 
-<select name="partner_id" required>
-@foreach($partners as $p)
-<option value="{{ $p->id }}">{{ $p->name }}</option>
-@endforeach
-</select>
+@section('content')
 
-<select name="partner_service_id">
-<option value="">-- service --</option>
-@foreach($services as $s)
-<option value="{{ $s->id }}">{{ $s->name }}</option>
-@endforeach
-</select>
+<div class="max-w-5xl">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-semibold">Dodaj obvezu</h2>
 
-<input name="title" placeholder="Title" required>
-<textarea name="description"></textarea>
+        <a href="{{ route('obligations.index') }}" class="app-button-secondary">
+            Natrag
+        </a>
+    </div>
 
-<input name="status" value="open">
-<input name="priority" value="normal">
+    <div class="app-card p-6">
+        <form action="{{ route('obligations.store') }}" method="POST">
+            @csrf
 
-<input type="date" name="due_date">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="app-form-group">
+                    <label class="app-label" for="partner_id">Partner *</label>
+                    <select id="partner_id" name="partner_id" class="app-select" required>
+                        <option value="">-- odaberi --</option>
+                        @foreach($partners as $partner)
+                            <option value="{{ $partner->id }}" {{ old('partner_id') == $partner->id ? 'selected' : '' }}>
+                                {{ $partner->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-<button>Spremi</button>
-</form>
+                <div class="app-form-group">
+                    <label class="app-label" for="partner_service_id">Usluga</label>
+                    <select id="partner_service_id" name="partner_service_id" class="app-select">
+                        <option value="">-- bez usluge --</option>
+                        @foreach($services as $service)
+                            <option value="{{ $service->id }}" {{ old('partner_service_id') == $service->id ? 'selected' : '' }}>
+                                {{ $service->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="app-form-group md:col-span-2">
+                    <label class="app-label" for="title">Naslov *</label>
+                    <input type="text" id="title" name="title" class="app-input" value="{{ old('title') }}" required>
+                </div>
+
+                <div class="app-form-group md:col-span-2">
+                    <label class="app-label" for="description">Opis</label>
+                    <textarea id="description" name="description" rows="4" class="app-textarea">{{ old('description') }}</textarea>
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label" for="status">Status *</label>
+                    <input type="text" id="status" name="status" class="app-input" value="{{ old('status', 'open') }}" required>
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label" for="priority">Prioritet *</label>
+                    <input type="text" id="priority" name="priority" class="app-input" value="{{ old('priority', 'normal') }}" required>
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label" for="due_date">Rok</label>
+                    <input type="date" id="due_date" name="due_date" class="app-input" value="{{ old('due_date') }}">
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button type="submit" class="app-button">Spremi</button>
+                <a href="{{ route('obligations.index') }}" class="app-button-secondary">Odustani</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@endsection

@@ -1,11 +1,281 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/* =========================
+   BASE
+   ========================= */
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dark body {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+/* =========================
+   APP SHELL
+   ========================= */
+
+.app-shell {
+    min-height: 100vh;
+}
+
+.app-sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+}
+
+.dark .app-sidebar {
+    background: #020617;
+    border-right-color: #1e293b;
+}
+
+.app-topbar {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.dark .app-topbar {
+    background: #111827;
+    border-bottom-color: #1f2937;
+}
+
+.app-main {
+    background: #f8fafc;
+}
+
+.dark .app-main {
+    background: #0f172a;
+}
+
+/* =========================
+   CARD
+   ========================= */
+
+.app-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dark .app-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* =========================
+   TABLE
+   ========================= */
+
+.app-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.app-table thead {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.dark .app-table thead {
+    background: #0f172a;
+    color: #94a3b8;
+}
+
+.app-table th,
+.app-table td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.app-row {
+    border-top: 1px solid #e2e8f0;
+}
+
+.app-row:hover {
+    background: #f8fafc;
+}
+
+.dark .app-row {
+    border-top-color: #334155;
+}
+
+.dark .app-row:hover {
+    background: rgba(51, 65, 85, 0.35);
+}
+
+/* =========================
+   BUTTONS
+   ========================= */
+
+.app-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    border-radius: 0.5rem;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.app-button:hover {
+    background: #1d4ed8;
+}
+
+.app-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    border-radius: 0.5rem;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 0;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.app-button-secondary:hover {
+    background: #cbd5e1;
+}
+
+.dark .app-button-secondary {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+.dark .app-button-secondary:hover {
+    background: #475569;
+}
+
+/* =========================
+   BADGES
+   ========================= */
+
+.app-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-ok {
+    background: rgba(22, 163, 74, 0.12);
+    color: #15803d;
+}
+
+.badge-soon {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+}
+
+.badge-overdue {
+    background: rgba(220, 38, 38, 0.12);
+    color: #b91c1c;
+}
+
+.dark .badge-ok {
+    background: rgba(22, 163, 74, 0.18);
+    color: #4ade80;
+}
+
+.dark .badge-soon {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+}
+
+.dark .badge-overdue {
+    background: rgba(220, 38, 38, 0.18);
+    color: #f87171;
+}
+
+/* =========================
+   FORMS
+   ========================= */
+
+.app-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.app-input,
+.app-select,
+.app-textarea {
+    width: 100%;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+.app-input:focus,
+.app-select:focus,
+.app-textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.dark .app-input,
+.dark .app-select,
+.dark .app-textarea {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+.app-form-group {
+    margin-bottom: 1rem;
+}
+
+/* =========================
+   LINKS / HELPERS
+   ========================= */
+
+.app-link {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.app-link:hover {
+    text-decoration: underline;
+}
+
+.dark .app-link {
+    color: #60a5fa;
+}
+
+.app-muted {
+    opacity: 0.65;
 }
