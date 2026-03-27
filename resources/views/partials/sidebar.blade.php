@@ -22,6 +22,9 @@
         <x-nav-link href="{{ route('obligations.index') }}" :active="request()->routeIs('obligations.*')">
             Obveze
         </x-nav-link>
+        <a href="{{ route('procurements.index') }}" class="app-nav-link">
+    Nabava / Kalkulacije
+</a>
     </nav>
 
 </aside>

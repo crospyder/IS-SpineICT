@@ -21,16 +21,27 @@ class DashboardController extends Controller
 
         $obligationsCount = Obligation::count();
         $overdueCount = Obligation::overdue()->count();
+        $todayCount = Obligation::query()
+            ->whereNull('completed_date')
+            ->whereDate('due_date', now()->toDateString())
+            ->count();
         $expiringCount = Obligation::expiringSoon()->count();
 
-        $expiringSoonList = Obligation::with('partner')
-            ->expiringSoon()
+        $overdueList = Obligation::with('partner')
+            ->overdue()
             ->orderBy('due_date')
             ->limit(5)
             ->get();
 
-        $overdueList = Obligation::with('partner')
-            ->overdue()
+        $todayList = Obligation::with('partner')
+            ->whereNull('completed_date')
+            ->whereDate('due_date', now()->toDateString())
+            ->orderBy('due_date')
+            ->limit(5)
+            ->get();
+
+        $expiringSoonList = Obligation::with('partner')
+            ->expiringSoon()
             ->orderBy('due_date')
             ->limit(5)
             ->get();
@@ -43,6 +54,10 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        $recentPartnersList = Partner::orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
         return view('dashboard', compact(
             'partnersCount',
             'activePartnersCount',
@@ -50,10 +65,13 @@ class DashboardController extends Controller
             'expiringServicesCount',
             'obligationsCount',
             'overdueCount',
+            'todayCount',
             'expiringCount',
-            'expiringSoonList',
             'overdueList',
-            'expiringServicesList'
+            'todayList',
+            'expiringSoonList',
+            'expiringServicesList',
+            'recentPartnersList'
         ));
     }
 }

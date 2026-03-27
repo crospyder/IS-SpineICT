@@ -9,6 +9,7 @@ use App\Http\Controllers\PartnerServiceController;
 use App\Http\Controllers\PartnerContactController;
 use App\Http\Controllers\CredentialController;
 
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -41,4 +42,5 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+    Route::resource('procurements', \App\Http\Controllers\ProcurementController::class);
 });

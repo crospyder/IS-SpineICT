@@ -37,9 +37,12 @@ class PartnerController extends Controller
         return view('partners.index', compact('partners'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('partners.create');
+        return view('partners.create', [
+            'returnTo' => $request->query('return_to'),
+            'returnPartnerField' => $request->query('return_partner_field', 'partner_id'),
+        ]);
     }
 
     public function store(Request $request)
@@ -61,35 +64,44 @@ class PartnerController extends Controller
 
         $data['is_active'] = $request->boolean('is_active', true);
 
-        Partner::create($data);
+        $partner = Partner::create($data);
+
+        $returnTo = $request->input('return_to');
+        $returnPartnerField = $request->input('return_partner_field', 'partner_id');
+
+        if ($returnTo) {
+            return redirect()->to($returnTo . '?' . http_build_query([
+                $returnPartnerField => $partner->id,
+            ]));
+        }
 
         return redirect()->route('partners.index');
     }
 
     public function show(string $id)
-{
-    $partner = Partner::with([
-        'contacts' => function ($query) {
-            $query->orderByDesc('is_primary')->orderBy('name');
-        },
-        'credentials' => function ($query) {
-            $query->orderBy('title');
-        },
-        'services' => function ($query) {
-            $query->orderBy('expires_on')->orderBy('name');
-        },
-        'obligations' => function ($query) {
-            $query->orderByRaw("
-                CASE
-                    WHEN completed_date IS NULL AND due_date IS NOT NULL THEN 0
-                    ELSE 1
-                END
-            ")->orderBy('due_date');
-        },
-    ])->findOrFail($id);
+    {
+        $partner = Partner::with([
+            'contacts' => function ($query) {
+                $query->orderByDesc('is_primary')->orderBy('name');
+            },
+            'credentials' => function ($query) {
+                $query->orderBy('title');
+            },
+            'services' => function ($query) {
+                $query->orderBy('expires_on')->orderBy('name');
+            },
+            'obligations' => function ($query) {
+                $query->orderByRaw("
+                    CASE
+                        WHEN completed_date IS NULL AND due_date IS NOT NULL THEN 0
+                        ELSE 1
+                    END
+                ")->orderBy('due_date');
+            },
+        ])->findOrFail($id);
 
-    return view('partners.show', compact('partner'));
-}
+        return view('partners.show', compact('partner'));
+    }
 
     public function edit(string $id)
     {

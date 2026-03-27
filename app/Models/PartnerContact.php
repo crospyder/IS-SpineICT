@@ -3,69 +3,37 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PartnerContact extends Model
 {
     protected $fillable = [
-        'name',
-        'legal_name',
-        'oib',
+        'partner_id',
+        'first_name',
+        'last_name',
         'email',
         'phone',
-        'website',
-        'address',
-        'city',
-        'postal_code',
-        'country',
-        'notes',
+        'job_title',
+        'is_primary',
         'is_active',
+        'notes',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_primary' => 'boolean',
             'is_active' => 'boolean',
         ];
     }
 
-    public function contacts(): HasMany
+    public function partner(): BelongsTo
     {
-        return $this->hasMany(PartnerContact::class);
+        return $this->belongsTo(Partner::class);
     }
 
-    public function services(): HasMany
+    public function getFullNameAttribute(): string
     {
-        return $this->hasMany(PartnerService::class);
-    }
-
-    public function projects(): HasMany
-    {
-        return $this->hasMany(Project::class);
-    }
-
-    public function obligations(): HasMany
-    {
-        return $this->hasMany(Obligation::class);
-    }
-
-    public function assets(): HasMany
-    {
-        return $this->hasMany(Asset::class);
-    }
-
-    public function credentials(): HasMany
-    {
-        return $this->hasMany(Credential::class);
-    }
-
-    public function licences(): HasMany
-    {
-        return $this->hasMany(Licence::class);
-    }
-
-    public function workLogs(): HasMany
-    {
-        return $this->hasMany(WorkLog::class);
+        return trim($this->first_name . ' ' . ($this->last_name ?? ''));
     }
 }

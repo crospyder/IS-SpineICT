@@ -8,7 +8,10 @@
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-semibold">Dodaj partnera</h2>
 
-        <a href="{{ route('partners.index') }}" class="app-button-secondary">
+        <a
+            href="{{ $returnTo ?: route('partners.index') }}"
+            class="app-button-secondary"
+        >
             Natrag
         </a>
     </div>
@@ -16,6 +19,9 @@
     <div class="app-card p-6">
         <form action="{{ route('partners.store') }}" method="POST">
             @csrf
+
+            <input type="hidden" name="return_to" value="{{ $returnTo }}">
+            <input type="hidden" name="return_partner_field" value="{{ $returnPartnerField }}">
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="app-form-group">
@@ -89,7 +95,7 @@
 
             <div class="mt-6 flex gap-3">
                 <button type="submit" class="app-button">Spremi</button>
-                <a href="{{ route('partners.index') }}" class="app-button-secondary">Odustani</a>
+                <a href="{{ $returnTo ?: route('partners.index') }}" class="app-button-secondary">Odustani</a>
             </div>
         </form>
     </div>
