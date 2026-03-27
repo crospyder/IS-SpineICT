@@ -74,6 +74,25 @@
         $finalSaleGross = $itemsSaleGross + $offerCostNet + $offerCostVat;
         $finalProfitNet = $itemsSaleNet - ($itemsPurchaseNet + $marginCostNet);
         $vatEffect = ($itemsSaleVat + $offerCostVat) - ($itemsPurchaseVat + $allCostVat);
+
+        $itemTypeLabels = [
+            'goods' => 'Roba',
+            'service' => 'Usluga',
+            'software' => 'Softver',
+            'hardware' => 'Hardver',
+            'subscription' => 'Pretplata',
+            'other' => 'Ostalo',
+        ];
+
+        $costTypeLabels = [
+            'field' => 'Terenski trošak',
+            'logistics' => 'Logistika',
+            'shipping' => 'Dostava',
+            'customs' => 'Carina',
+            'travel' => 'Putni trošak',
+            'service' => 'Usluga',
+            'other' => 'Ostalo',
+        ];
     @endphp
 
     <div class="space-y-6">
@@ -340,7 +359,7 @@
                                     @endif
                                 </td>
 
-                                <td>{{ $row->item_type }}</td>
+                                <td>{{ $itemTypeLabels[$row->item_type] ?? $row->item_type }}</td>
 
                                 <td>
                                     <div>{{ $row->supplier_name ?: '-' }}</div>
@@ -409,7 +428,9 @@
                                                         <label class="app-label">Tip</label>
                                                         <select name="item_type" class="app-select" required>
                                                             @foreach(['goods','service','software','hardware','subscription','other'] as $type)
-                                                                <option value="{{ $type }}" @selected($row->item_type === $type)>{{ $type }}</option>
+                                                                <option value="{{ $type }}" @selected($row->item_type === $type)>
+                                                                    {{ $itemTypeLabels[$type] ?? $type }}
+                                                                </option>
                                                             @endforeach
                                                         </select>
                                                     </div>
@@ -527,12 +548,12 @@
                         <div class="app-form-group">
                             <label class="app-label">Tip *</label>
                             <select name="item_type" class="app-select" required>
-                                <option value="goods">goods</option>
-                                <option value="service">service</option>
-                                <option value="software">software</option>
-                                <option value="hardware">hardware</option>
-                                <option value="subscription">subscription</option>
-                                <option value="other">other</option>
+                                <option value="goods">Roba</option>
+                                <option value="service">Usluga</option>
+                                <option value="software">Softver</option>
+                                <option value="hardware">Hardver</option>
+                                <option value="subscription">Pretplata</option>
+                                <option value="other">Ostalo</option>
                             </select>
                         </div>
 
@@ -621,10 +642,13 @@
         </div>
 
         <div class="app-card p-6">
-            <h3 class="font-semibold mb-4">Troškovi</h3>
-
-            <div class="text-sm app-muted mb-4">
-                Troškovi terena su odvojeni. Svaki trošak može ulaziti u ponudu i/ili u maržu.
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-semibold">Troškovi</h3>
+                    <div class="text-sm app-muted mt-1">
+                        Kompaktni prikaz. Uređivanje se otvara samo za odabrani trošak.
+                    </div>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -648,27 +672,43 @@
                                 <td>
                                     <div class="font-medium">{{ $cost->description }}</div>
                                     @if($cost->notes)
-                                        <div class="text-xs app-muted mt-1">{{ $cost->notes }}</div>
+                                        <div class="text-xs app-muted mt-1">
+                                            {{ \Illuminate\Support\Str::limit($cost->notes, 70) }}
+                                        </div>
                                     @endif
                                 </td>
-                                <td>{{ $cost->cost_type }}</td>
+
+                                <td>{{ $costTypeLabels[$cost->cost_type] ?? $cost->cost_type }}</td>
+
                                 <td>{{ $cost->supplier_origin === 'foreign' ? 'Strani' : 'Domaći' }}</td>
+
                                 <td>
                                     {{ number_format((float) $cost->quantity, 2, ',', '.') }}
                                     {{ $cost->unit }}
                                 </td>
+
                                 <td>
                                     {{ number_format((float) $cost->total_net, 2, ',', '.') }}
                                     {{ $cost->currency }}
                                 </td>
+
                                 <td>
                                     {{ number_format((float) $cost->total_gross, 2, ',', '.') }}
                                     {{ $cost->currency }}
                                 </td>
+
                                 <td>{{ $cost->include_in_offer ? 'DA' : 'NE' }}</td>
                                 <td>{{ $cost->include_in_margin ? 'DA' : 'NE' }}</td>
-                                <td class="text-right">
-                                    <form method="POST" action="{{ route('procurements.costs.destroy', [$item, $cost]) }}" onsubmit="return confirm('Obrisati trošak?')">
+
+                                <td class="text-right whitespace-nowrap">
+                                    <a
+                                        href="{{ route('procurements.edit', ['procurement' => $item->id, 'edit_cost' => $cost->id]) }}#cost-edit-{{ $cost->id }}"
+                                        class="app-link mr-3"
+                                    >
+                                        Uredi
+                                    </a>
+
+                                    <form method="POST" action="{{ route('procurements.costs.destroy', [$item, $cost]) }}" class="inline" onsubmit="return confirm('Obrisati trošak?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="app-link">Obriši</button>
@@ -676,91 +716,101 @@
                                 </td>
                             </tr>
 
-                            <tr>
-                                <td colspan="9" class="p-0">
-                                    <div class="border-t p-4">
-                                        <form method="POST" action="{{ route('procurements.costs.update', [$item, $cost]) }}">
-                                            @csrf
-                                            @method('PUT')
+                            @if((string) request('edit_cost') === (string) $cost->id)
+                                <tr id="cost-edit-{{ $cost->id }}">
+                                    <td colspan="9" class="p-0">
+                                        <div class="border-t p-4 bg-black/5">
+                                            <div class="font-medium mb-4">Uredi trošak</div>
 
-                                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Opis</label>
-                                                    <input name="description" class="app-input" value="{{ $cost->description }}" required>
+                                            <form method="POST" action="{{ route('procurements.costs.update', [$item, $cost]) }}">
+                                                @csrf
+                                                @method('PUT')
+
+                                                <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                                                    <div class="app-form-group md:col-span-2">
+                                                        <label class="app-label">Opis</label>
+                                                        <input name="description" class="app-input" value="{{ $cost->description }}" required>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Tip troška</label>
+                                                        <select name="cost_type" class="app-select" required>
+                                                            @foreach(['field','logistics','shipping','customs','travel','service','other'] as $type)
+                                                                <option value="{{ $type }}" @selected($cost->cost_type === $type)>
+                                                                    {{ $costTypeLabels[$type] ?? $type }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Podrijetlo</label>
+                                                        <select name="supplier_origin" class="app-select" required>
+                                                            <option value="domestic" @selected($cost->supplier_origin === 'domestic')>Domaći</option>
+                                                            <option value="foreign" @selected($cost->supplier_origin === 'foreign')>Strani</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Valuta</label>
+                                                        <select name="currency" class="app-select" required>
+                                                            <option value="EUR" @selected($cost->currency === 'EUR')>EUR</option>
+                                                            <option value="USD" @selected($cost->currency === 'USD')>USD</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Količina</label>
+                                                        <input type="number" step="0.001" min="0.001" name="quantity" class="app-input" value="{{ number_format((float) $cost->quantity, 3, '.', '') }}" required>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Jedinica</label>
+                                                        <input name="unit" class="app-input" value="{{ $cost->unit }}">
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">Neto iznos / kom</label>
+                                                        <input type="number" step="0.0001" min="0" name="net_amount" class="app-input" value="{{ number_format((float) $cost->net_amount, 4, '.', '') }}" required>
+                                                    </div>
+
+                                                    <div class="app-form-group">
+                                                        <label class="app-label">PDV %</label>
+                                                        <input type="number" step="0.01" min="0" max="100" name="vat_rate" class="app-input" value="{{ number_format((float) $cost->vat_rate, 2, '.', '') }}" required>
+                                                    </div>
+
+                                                    <div class="app-form-group md:col-span-2">
+                                                        <label class="inline-flex items-center gap-2">
+                                                            <input type="checkbox" name="include_in_offer" value="1" @checked($cost->include_in_offer)>
+                                                            <span class="text-sm">Uključi u ponudu</span>
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="app-form-group md:col-span-2">
+                                                        <label class="inline-flex items-center gap-2">
+                                                            <input type="checkbox" name="include_in_margin" value="1" @checked($cost->include_in_margin)>
+                                                            <span class="text-sm">Uključi u maržu</span>
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="app-form-group md:col-span-6">
+                                                        <label class="app-label">Napomena</label>
+                                                        <textarea name="notes" rows="2" class="app-input">{{ $cost->notes }}</textarea>
+                                                    </div>
                                                 </div>
 
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Tip troška</label>
-                                                    <select name="cost_type" class="app-select" required>
-                                                        @foreach(['field','logistics','shipping','customs','travel','service','other'] as $type)
-                                                            <option value="{{ $type }}" @selected($cost->cost_type === $type)>{{ $type }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
+                                                <div class="mt-4 flex gap-3">
+                                                    <button type="submit" class="app-button-secondary">Spremi trošak</button>
 
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Podrijetlo</label>
-                                                    <select name="supplier_origin" class="app-select" required>
-                                                        <option value="domestic" @selected($cost->supplier_origin === 'domestic')>Domaći</option>
-                                                        <option value="foreign" @selected($cost->supplier_origin === 'foreign')>Strani</option>
-                                                    </select>
+                                                    <a href="{{ route('procurements.edit', $item) }}#costs-nova" class="app-button-secondary">
+                                                        Zatvori
+                                                    </a>
                                                 </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Valuta</label>
-                                                    <select name="currency" class="app-select" required>
-                                                        <option value="EUR" @selected($cost->currency === 'EUR')>EUR</option>
-                                                        <option value="USD" @selected($cost->currency === 'USD')>USD</option>
-                                                    </select>
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Količina</label>
-                                                    <input type="number" step="0.001" min="0.001" name="quantity" class="app-input" value="{{ number_format((float) $cost->quantity, 3, '.', '') }}" required>
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Jedinica</label>
-                                                    <input name="unit" class="app-input" value="{{ $cost->unit }}">
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="app-label">Neto iznos / kom</label>
-                                                    <input type="number" step="0.0001" min="0" name="net_amount" class="app-input" value="{{ number_format((float) $cost->net_amount, 4, '.', '') }}" required>
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="app-label">PDV %</label>
-                                                    <input type="number" step="0.01" min="0" max="100" name="vat_rate" class="app-input" value="{{ number_format((float) $cost->vat_rate, 2, '.', '') }}" required>
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="inline-flex items-center gap-2">
-                                                        <input type="checkbox" name="include_in_offer" value="1" @checked($cost->include_in_offer)>
-                                                        <span class="text-sm">Uključi u ponudu</span>
-                                                    </label>
-                                                </div>
-
-                                                <div class="app-form-group">
-                                                    <label class="inline-flex items-center gap-2">
-                                                        <input type="checkbox" name="include_in_margin" value="1" @checked($cost->include_in_margin)>
-                                                        <span class="text-sm">Uključi u maržu</span>
-                                                    </label>
-                                                </div>
-
-                                                <div class="app-form-group md:col-span-4">
-                                                    <label class="app-label">Napomena</label>
-                                                    <textarea name="notes" rows="2" class="app-input">{{ $cost->notes }}</textarea>
-                                                </div>
-                                            </div>
-
-                                            <div class="mt-3">
-                                                <button type="submit" class="app-button-secondary">Spremi trošak</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endif
                         @empty
                             <tr>
                                 <td colspan="9" class="app-muted">Nema troškova.</td>
@@ -770,14 +820,14 @@
                 </table>
             </div>
 
-            <div class="border-t mt-6 pt-6">
+            <div id="costs-nova" class="border-t mt-6 pt-6">
                 <h4 class="font-semibold mb-4">Dodaj novi trošak</h4>
 
                 <form method="POST" action="{{ route('procurements.costs.store', $item) }}">
                     @csrf
 
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <div class="app-form-group">
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                        <div class="app-form-group md:col-span-2">
                             <label class="app-label">Opis *</label>
                             <input name="description" class="app-input" required>
                         </div>
@@ -785,13 +835,13 @@
                         <div class="app-form-group">
                             <label class="app-label">Tip troška *</label>
                             <select name="cost_type" class="app-select" required>
-                                <option value="field">field</option>
-                                <option value="logistics">logistics</option>
-                                <option value="shipping">shipping</option>
-                                <option value="customs">customs</option>
-                                <option value="travel">travel</option>
-                                <option value="service">service</option>
-                                <option value="other">other</option>
+                                <option value="field">Terenski trošak</option>
+                                <option value="logistics">Logistika</option>
+                                <option value="shipping">Dostava</option>
+                                <option value="customs">Carina</option>
+                                <option value="travel">Putni trošak</option>
+                                <option value="service">Usluga</option>
+                                <option value="other">Ostalo</option>
                             </select>
                         </div>
 
@@ -831,21 +881,21 @@
                             <input type="number" step="0.01" min="0" max="100" name="vat_rate" class="app-input" value="{{ number_format((float) $item->vat_rate, 2, '.', '') }}" required>
                         </div>
 
-                        <div class="app-form-group">
+                        <div class="app-form-group md:col-span-2">
                             <label class="inline-flex items-center gap-2">
                                 <input type="checkbox" name="include_in_offer" value="1">
                                 <span class="text-sm">Uključi u ponudu</span>
                             </label>
                         </div>
 
-                        <div class="app-form-group">
+                        <div class="app-form-group md:col-span-2">
                             <label class="inline-flex items-center gap-2">
                                 <input type="checkbox" name="include_in_margin" value="1" checked>
                                 <span class="text-sm">Uključi u maržu</span>
                             </label>
                         </div>
 
-                        <div class="app-form-group md:col-span-4">
+                        <div class="app-form-group md:col-span-6">
                             <label class="app-label">Napomena</label>
                             <textarea name="notes" rows="2" class="app-input"></textarea>
                         </div>
