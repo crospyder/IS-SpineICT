@@ -6,6 +6,7 @@ use App\Models\Partner;
 use App\Models\Procurement;
 use Illuminate\Http\Request;
 use App\Models\ProcurementItem;
+use App\Models\ProcurementCost;
 
 class ProcurementController extends Controller
 {
@@ -229,5 +230,69 @@ public function destroyItem(Procurement $procurement, ProcurementItem $procureme
     return redirect()
         ->route('procurements.edit', $procurement)
         ->with('success', 'Stavka je obrisana.');
+}
+public function storeCost(Request $request, Procurement $procurement)
+{
+    $data = $request->validate([
+        'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
+        'description' => 'required|string|max:255',
+        'quantity' => 'required|numeric|min:0.001',
+        'unit' => 'nullable|string|max:50',
+        'currency' => 'required|in:EUR,USD',
+        'net_amount' => 'required|numeric|min:0',
+        'vat_rate' => 'required|numeric|min:0|max:100',
+        'supplier_origin' => 'required|in:domestic,foreign',
+        'include_in_offer' => 'nullable|boolean',
+        'include_in_margin' => 'nullable|boolean',
+        'notes' => 'nullable|string',
+    ]);
+
+    $data['include_in_offer'] = $request->boolean('include_in_offer');
+    $data['include_in_margin'] = $request->boolean('include_in_margin', true);
+
+    $procurement->costs()->create($data);
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Trošak je dodan.');
+}
+
+public function updateCost(Request $request, Procurement $procurement, ProcurementCost $procurementCost)
+{
+    abort_unless($procurementCost->procurement_id === $procurement->id, 404);
+
+    $data = $request->validate([
+        'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
+        'description' => 'required|string|max:255',
+        'quantity' => 'required|numeric|min:0.001',
+        'unit' => 'nullable|string|max:50',
+        'currency' => 'required|in:EUR,USD',
+        'net_amount' => 'required|numeric|min:0',
+        'vat_rate' => 'required|numeric|min:0|max:100',
+        'supplier_origin' => 'required|in:domestic,foreign',
+        'include_in_offer' => 'nullable|boolean',
+        'include_in_margin' => 'nullable|boolean',
+        'notes' => 'nullable|string',
+    ]);
+
+    $data['include_in_offer'] = $request->boolean('include_in_offer');
+    $data['include_in_margin'] = $request->boolean('include_in_margin');
+
+    $procurementCost->update($data);
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Trošak je ažuriran.');
+}
+
+public function destroyCost(Procurement $procurement, ProcurementCost $procurementCost)
+{
+    abort_unless($procurementCost->procurement_id === $procurement->id, 404);
+
+    $procurementCost->delete();
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Trošak je obrisan.');
 }
 }

@@ -51,4 +51,12 @@ Route::put('/procurements/{procurement}/items/{procurementItem}', [\App\Http\Con
 
 Route::delete('/procurements/{procurement}/items/{procurementItem}', [\App\Http\Controllers\ProcurementController::class, 'destroyItem'])
     ->name('procurements.items.destroy');
+Route::post('/procurements/{procurement}/costs', [\App\Http\Controllers\ProcurementController::class, 'storeCost'])
+    ->name('procurements.costs.store');
+
+Route::put('/procurements/{procurement}/costs/{procurementCost}', [\App\Http\Controllers\ProcurementController::class, 'updateCost'])
+    ->name('procurements.costs.update');
+
+Route::delete('/procurements/{procurement}/costs/{procurementCost}', [\App\Http\Controllers\ProcurementController::class, 'destroyCost'])
+    ->name('procurements.costs.destroy');
 });

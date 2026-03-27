@@ -38,4 +38,13 @@ class ProcurementCost extends Model
     {
         return $this->quantity * $this->net_amount;
     }
+    public function getVatTotalAttribute(): float
+{
+    return $this->total_net * ($this->vat_rate / 100);
+}
+
+public function getTotalGrossAttribute(): float
+{
+    return $this->total_net + $this->vat_total;
+}
 }
