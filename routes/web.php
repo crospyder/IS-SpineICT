@@ -43,4 +43,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
     Route::resource('procurements', \App\Http\Controllers\ProcurementController::class);
+    Route::post('/procurements/{procurement}/items', [\App\Http\Controllers\ProcurementController::class, 'storeItem'])
+    ->name('procurements.items.store');
+
+Route::put('/procurements/{procurement}/items/{procurementItem}', [\App\Http\Controllers\ProcurementController::class, 'updateItem'])
+    ->name('procurements.items.update');
+
+Route::delete('/procurements/{procurement}/items/{procurementItem}', [\App\Http\Controllers\ProcurementController::class, 'destroyItem'])
+    ->name('procurements.items.destroy');
 });

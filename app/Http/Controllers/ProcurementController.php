@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Partner;
 use App\Models\Procurement;
 use Illuminate\Http\Request;
+use App\Models\ProcurementItem;
 
 class ProcurementController extends Controller
 {
@@ -156,4 +157,77 @@ class ProcurementController extends Controller
             ->route('procurements.index')
             ->with('success', 'Kalkulacija je obrisana.');
     }
+    public function storeItem(Request $request, Procurement $procurement)
+{
+    $data = $request->validate([
+        'sort_order' => 'nullable|integer|min:0',
+        'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'quantity' => 'required|numeric|min:0.001',
+        'supplier_origin' => 'required|in:domestic,foreign',
+        'supplier_name' => 'nullable|string|max:255',
+        'purchase_currency' => 'required|in:EUR,USD',
+        'sale_currency' => 'required|in:EUR,USD',
+        'purchase_net_unit' => 'required|numeric|min:0',
+        'sale_net_unit' => 'required|numeric|min:0',
+        'purchase_vat_rate' => 'required|numeric|min:0|max:100',
+        'sale_vat_rate' => 'required|numeric|min:0|max:100',
+        'is_optional' => 'nullable|boolean',
+        'status_flag' => 'nullable|string|max:30',
+        'notes' => 'nullable|string',
+    ]);
+
+    $data['sort_order'] = $data['sort_order'] ?? ((int) $procurement->items()->max('sort_order') + 1);
+    $data['is_optional'] = $request->boolean('is_optional');
+
+    $procurement->items()->create($data);
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Stavka je dodana.');
+}
+
+public function updateItem(Request $request, Procurement $procurement, ProcurementItem $procurementItem)
+{
+    abort_unless($procurementItem->procurement_id === $procurement->id, 404);
+
+    $data = $request->validate([
+        'sort_order' => 'nullable|integer|min:0',
+        'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'quantity' => 'required|numeric|min:0.001',
+        'supplier_origin' => 'required|in:domestic,foreign',
+        'supplier_name' => 'nullable|string|max:255',
+        'purchase_currency' => 'required|in:EUR,USD',
+        'sale_currency' => 'required|in:EUR,USD',
+        'purchase_net_unit' => 'required|numeric|min:0',
+        'sale_net_unit' => 'required|numeric|min:0',
+        'purchase_vat_rate' => 'required|numeric|min:0|max:100',
+        'sale_vat_rate' => 'required|numeric|min:0|max:100',
+        'is_optional' => 'nullable|boolean',
+        'status_flag' => 'nullable|string|max:30',
+        'notes' => 'nullable|string',
+    ]);
+
+    $data['is_optional'] = $request->boolean('is_optional');
+
+    $procurementItem->update($data);
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Stavka je ažurirana.');
+}
+
+public function destroyItem(Procurement $procurement, ProcurementItem $procurementItem)
+{
+    abort_unless($procurementItem->procurement_id === $procurement->id, 404);
+
+    $procurementItem->delete();
+
+    return redirect()
+        ->route('procurements.edit', $procurement)
+        ->with('success', 'Stavka je obrisana.');
+}
 }
