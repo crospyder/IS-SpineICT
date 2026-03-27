@@ -8,10 +8,19 @@
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-semibold">Novi pristup</h2>
 
-        <a href="{{ route('partners.show', request('partner_id')) }}" class="app-button-secondary">
+        <a
+            href="{{ request('partner_id') ? route('partners.show', request('partner_id')) : route('partners.index') }}"
+            class="app-button-secondary"
+        >
             Natrag
         </a>
     </div>
+
+    @if (!request('partner_id'))
+        <div class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+            Pristup mora biti vezan uz partnera. Otvori “Novi pristup” iz partner kartona.
+        </div>
+    @endif
 
     <form method="POST" action="{{ route('credentials.store') }}" class="app-card p-6">
         @csrf
@@ -66,7 +75,12 @@
 
         <div class="flex gap-3">
             <button class="app-button">Spremi</button>
-            <a href="{{ route('partners.show', request('partner_id')) }}" class="app-button-secondary">Odustani</a>
+            <a
+                href="{{ request('partner_id') ? route('partners.show', request('partner_id')) : route('partners.index') }}"
+                class="app-button-secondary"
+            >
+                Odustani
+            </a>
         </div>
     </form>
 </div>

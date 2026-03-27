@@ -8,8 +8,15 @@ use Illuminate\Http\Request;
 
 class CredentialController extends Controller
 {
-    public function create()
+    public function create(Request $request)
     {
+        $partnerId = $request->query('partner_id');
+
+        if (!$partnerId || !Partner::where('id', $partnerId)->exists()) {
+            return redirect()->route('partners.index')
+                ->with('error', 'Prvo odaberi partnera.');
+        }
+
         return view('credentials.create', [
             'partners' => Partner::orderBy('name')->get(),
         ]);
