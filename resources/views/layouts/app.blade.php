@@ -20,14 +20,25 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <button type="button" onclick="toggleDark()" class="app-button-secondary">
-                    🌓
-                </button>
+    <button type="button" onclick="toggleDark()" class="app-button-secondary">
+        🌓
+    </button>
 
-                <div class="text-xs app-muted">
-                    SpineICT OPS v0.0.1
-                </div>
-            </div>
+    <div class="text-xs app-muted">
+        {{ auth()->user()->name }}
+    </div>
+
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" class="app-button-secondary">
+            Odjava
+        </button>
+    </form>
+
+    <div class="text-xs app-muted">
+        SpineICT OPS v0.1.1
+    </div>
+</div>
         </header>
 
         <main class="flex-1 overflow-y-auto p-6 app-main">
