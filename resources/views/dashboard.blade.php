@@ -96,11 +96,11 @@
             <div class="app-card p-5 xl:col-span-4">
                 <h2 class="text-lg font-semibold mb-4">Brze akcije</h2>
 
-                <div class="grid grid-cols-1 gap-3">
-                    <a href="{{ route('partners.create') }}" class="app-button text-center">Dodaj partnera</a>
-                    <a href="{{ route('partner-services.create') }}" class="app-button-secondary text-center">Dodaj uslugu</a>
-                    <a href="{{ route('obligations.create') }}" class="app-button-secondary text-center">Dodaj obvezu</a>
-                    <a href="{{ route('obligations.index') }}" class="app-button-secondary text-center">Otvori obveze</a>
+                <div class="flex flex-col gap-2">
+                    <a href="{{ route('partners.create') }}" class="app-button text-center text-sm py-2">Dodaj partnera</a>
+                    <a href="{{ route('partner-services.create') }}" class="app-button-secondary text-center text-sm py-2">Dodaj uslugu</a>
+                    <a href="{{ route('obligations.create') }}" class="app-button-secondary text-center text-sm py-2">Dodaj obvezu</a>
+                    <a href="{{ route('obligations.index') }}" class="app-button-secondary text-center text-sm py-2">Otvori obveze</a>
                 </div>
             </div>
         </div>
@@ -157,8 +157,8 @@
                 <h2 class="text-lg font-semibold">Zadnje aktivnosti</h2>
             </div>
 
-            <form method="GET" action="{{ route('dashboard') }}" class="grid grid-cols-1 gap-3 mb-5">
-                <select name="activity_entity" class="app-input py-2 px-3 text-sm">
+            <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-center gap-2 mb-5">
+                <select name="activity_entity" class="app-input py-1.5 px-2 text-xs min-w-[120px]">
                     <option value="">Sve</option>
                     @foreach($activityAvailableEntities as $entityValue => $entityLabel)
                         <option value="{{ $entityValue }}" @selected($activityEntity === $entityValue)>
@@ -167,42 +167,40 @@
                     @endforeach
                 </select>
 
-                <label class="inline-flex items-center gap-2 text-sm app-muted">
+                <label class="inline-flex items-center gap-2 text-xs app-muted whitespace-nowrap">
                     <input type="checkbox" name="activity_mine" value="1" @checked($activityMine)>
-                    Moje aktivnosti
+                    Moje
                 </label>
 
-                <div class="grid grid-cols-[1fr_auto_auto] gap-2 items-center">
-                    <select name="activity_limit" class="app-input py-2 px-3 text-sm">
-                        <option value="10" @selected($activityLimit === 10)>10</option>
-                        <option value="25" @selected($activityLimit === 25)>25</option>
-                        <option value="50" @selected($activityLimit === 50)>50</option>
-                    </select>
+                <select name="activity_limit" class="app-input py-1.5 px-2 text-xs w-20">
+                    <option value="10" @selected($activityLimit === 10)>10</option>
+                    <option value="25" @selected($activityLimit === 25)>25</option>
+                    <option value="50" @selected($activityLimit === 50)>50</option>
+                </select>
 
-                    <button type="submit" class="app-button-secondary py-2 px-3 text-sm">
-                        Primijeni
-                    </button>
+                <button type="submit" class="app-button-secondary py-1.5 px-2 text-xs">
+                    Primijeni
+                </button>
 
-                    @if($activityEntity || $activityMine || $activityLimit !== 10)
-                        <a href="{{ route('dashboard') }}" class="app-link text-sm whitespace-nowrap">
-                            Reset
-                        </a>
-                    @endif
-                </div>
+                @if($activityEntity || $activityMine || $activityLimit !== 10)
+                    <a href="{{ route('dashboard') }}" class="app-link text-xs whitespace-nowrap">
+                        Reset
+                    </a>
+                @endif
             </form>
 
             @if($recentActivities->count())
-                <div class="space-y-4">
+                <div class="space-y-4 text-sm">
                     @foreach($recentActivities as $activity)
                         <div class="border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
-                                    <div class="text-sm font-medium break-words">
+                                    <div class="text-sm font-medium break-words leading-tight">
                                         {{ $activity->title ?: $activity->entity_label }}
                                     </div>
 
                                     @if(!empty($activity->message))
-                                        <div class="text-sm mt-1 app-muted break-words">
+                                        <div class="text-sm mt-1 app-muted break-words leading-snug">
                                             {{ $activity->message }}
                                         </div>
                                     @endif

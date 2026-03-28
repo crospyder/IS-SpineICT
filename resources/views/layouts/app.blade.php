@@ -20,35 +20,72 @@
             </div>
 
             <div class="flex items-center gap-3 shrink-0">
-                <a href="{{ route('dashboard') }}" class="app-button-secondary flex items-center gap-2">
-                    <span>Upozorenja</span>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer app-button-secondary flex items-center gap-2">
+                        <span>Upozorenja</span>
 
-                    @if(($topbarNotificationTotalCount ?? 0) > 0)
-                        <span class="app-badge badge-overdue">
-                            {{ $topbarNotificationTotalCount }}
-                        </span>
-                    @else
-                        <span class="app-badge badge-ok">
-                            0
-                        </span>
-                    @endif
-                </a>
-
-                @if(($topbarNotificationOverdueCount ?? 0) > 0 || ($topbarNotificationTodayCount ?? 0) > 0)
-                    <div class="hidden 2xl:flex items-center gap-2 text-xs">
-                        @if(($topbarNotificationOverdueCount ?? 0) > 0)
+                        @if(($topbarNotificationTotalCount ?? 0) > 0)
                             <span class="app-badge badge-overdue">
-                                Kasni: {{ $topbarNotificationOverdueCount }}
+                                {{ $topbarNotificationTotalCount }}
+                            </span>
+                        @else
+                            <span class="app-badge badge-ok">
+                                0
                             </span>
                         @endif
 
-                        @if(($topbarNotificationTodayCount ?? 0) > 0)
-                            <span class="app-badge badge-soon">
-                                Danas: {{ $topbarNotificationTodayCount }}
-                            </span>
+                        <span class="text-xs app-muted">▾</span>
+                    </summary>
+
+                    <div class="absolute right-0 top-full mt-2 w-[520px] max-w-[92vw] overflow-x-hidden app-card p-4 shadow-2xl z-50">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-sm font-semibold">Aktivna upozorenja</div>
+                                <div class="text-xs app-muted">
+                                    Kasni: {{ $topbarNotificationOverdueCount ?? 0 }} · Danas: {{ $topbarNotificationTodayCount ?? 0 }}
+                                </div>
+                            </div>
+
+                            <a href="{{ route('dashboard') }}" class="app-link text-xs">
+                                Otvori dashboard
+                            </a>
+                        </div>
+
+                        @if(($topbarNotificationItems ?? collect())->count())
+                            <div class="flex flex-col gap-3 max-h-96 overflow-y-auto overflow-x-hidden pr-1">
+                                @foreach($topbarNotificationItems as $item)
+                                    <a href="{{ $item->url }}" class="block w-full min-w-0 border-b border-white/10 pb-3 last:border-b-0 last:pb-0 hover:bg-white/5 rounded-md px-2 -mx-2 transition">
+                                        <div class="min-w-0">
+                                            <div class="text-xs app-muted break-words">
+                                                {{ $item->kind_label }} · {{ $item->partner_name }}
+                                            </div>
+
+                                            <div class="text-sm font-medium break-words mt-1 leading-tight">
+                                                {{ $item->title }}
+                                            </div>
+
+                                            <div class="flex items-center justify-between gap-3 mt-2 min-w-0">
+                                                <div class="text-xs app-muted">
+                                                    {{ $item->date ? $item->date->format('d.m.Y') : '-' }}
+                                                </div>
+
+                                                <div class="shrink-0">
+                                                    <span class="app-badge {{ $item->status_class }}">
+                                                        {{ $item->status_label }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-sm app-muted">
+                                Nema aktivnih upozorenja.
+                            </div>
                         @endif
                     </div>
-                @endif
+                </details>
 
                 <button type="button" onclick="toggleDark()" class="app-button-secondary">
                     🌓
@@ -66,7 +103,7 @@
                 </form>
 
                 <div class="text-xs app-muted hidden xl:block">
-                    SpineICT OPS v0.1.1
+                    SpineICT OPS v0.2.2
                 </div>
             </div>
         </header>
@@ -105,6 +142,16 @@ function toggleDark() {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     setTheme(prefersDark ? 'dark' : 'light');
 })();
+</script>
+
+<script>
+document.addEventListener('click', function (e) {
+    document.querySelectorAll('details').forEach((dropdown) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.removeAttribute('open');
+        }
+    });
+});
 </script>
 </body>
 </html>
