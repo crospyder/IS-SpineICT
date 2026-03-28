@@ -36,6 +36,8 @@ class DashboardService
             ->limit($activityLimit)
             ->get();
 
+        $groupedRecentActivities = $this->groupRecentActivities($recentActivities);
+
         return [
             'partnersCount' => $partnersCount,
             'activePartnersCount' => $activePartnersCount,
@@ -45,6 +47,7 @@ class DashboardService
             'alertsList' => $alertsList,
             'nextItems' => $nextItems,
             'recentActivities' => $recentActivities,
+            'groupedRecentActivities' => $groupedRecentActivities,
             'activityEntity' => $activityEntity,
             'activityMine' => $activityUserId !== null,
             'activityLimit' => $activityLimit,
@@ -71,6 +74,41 @@ class DashboardService
         }
 
         return $query;
+    }
+
+    protected function groupRecentActivities(Collection $activities): Collection
+    {
+        $today = now()->startOfDay();
+        $yesterday = now()->subDay()->startOfDay();
+
+        $groups = collect([
+            'Danas' => collect(),
+            'Jučer' => collect(),
+            'Ranije' => collect(),
+        ]);
+
+        foreach ($activities as $activity) {
+            $activityDate = $activity->created_at?->copy()->startOfDay();
+
+            if (!$activityDate) {
+                $groups['Ranije']->push($activity);
+                continue;
+            }
+
+            if ($activityDate->equalTo($today)) {
+                $groups['Danas']->push($activity);
+                continue;
+            }
+
+            if ($activityDate->equalTo($yesterday)) {
+                $groups['Jučer']->push($activity);
+                continue;
+            }
+
+            $groups['Ranije']->push($activity);
+        }
+
+        return $groups->filter(fn (Collection $items) => $items->isNotEmpty());
     }
 
     protected function buildAlertsList(?string $alertsFilter = null): Collection

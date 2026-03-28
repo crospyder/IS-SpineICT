@@ -4,7 +4,7 @@
 
 @section('content')
 
-<div class="max-w-4xl">
+<div class="max-w-5xl">
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-semibold">Uredi partnera</h2>
 
@@ -13,10 +13,68 @@
         </a>
     </div>
 
-    <div class="app-card p-6">
-        <form action="{{ route('partners.update', $partner) }}" method="POST">
-            @csrf
-            @method('PUT')
+    <form action="{{ route('partners.update', $partner) }}" method="POST" class="space-y-6" id="partner-edit-form">
+        @csrf
+        @method('PUT')
+
+        @if (session('status'))
+            <div class="app-card p-4">
+                <div class="text-sm">
+                    {{ session('status') }}
+                </div>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="app-card p-4">
+                <div class="app-badge badge-overdue mb-3">Provjeri unesene podatke.</div>
+
+                <ul class="text-sm app-muted space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>— {{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="app-card p-6">
+            <div class="mb-5">
+                <h3 class="text-base font-semibold">Sudski registar</h3>
+                <div class="text-sm app-muted mt-1">
+                    Osvježava samo službene podatke: naziv, pravni naziv, OIB, adresa, grad, poštanski broj i državu.
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div class="app-form-group md:col-span-4">
+                    <label class="app-label" for="oib">OIB</label>
+                    <input
+                        type="text"
+                        id="oib"
+                        name="oib"
+                        class="app-input"
+                        value="{{ old('oib', $partner->oib) }}"
+                        inputmode="numeric"
+                        maxlength="11"
+                    >
+                </div>
+
+                <div class="md:col-span-4 flex gap-3">
+                    <button type="button" id="refresh-from-sudreg" class="app-button">
+                        Osvježi iz registra
+                    </button>
+                </div>
+
+                <div class="md:col-span-4">
+                    <div id="registry-status" class="text-sm app-muted"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card p-6">
+            <div class="mb-5">
+                <h3 class="text-base font-semibold">Osnovni podaci</h3>
+            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="app-form-group">
@@ -27,26 +85,6 @@
                 <div class="app-form-group">
                     <label class="app-label" for="legal_name">Pravni naziv</label>
                     <input type="text" id="legal_name" name="legal_name" class="app-input" value="{{ old('legal_name', $partner->legal_name) }}">
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label" for="oib">OIB</label>
-                    <input type="text" id="oib" name="oib" class="app-input" value="{{ old('oib', $partner->oib) }}">
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label" for="email">Email</label>
-                    <input type="email" id="email" name="email" class="app-input" value="{{ old('email', $partner->email) }}">
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label" for="phone">Telefon</label>
-                    <input type="text" id="phone" name="phone" class="app-input" value="{{ old('phone', $partner->phone) }}">
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label" for="website">Website</label>
-                    <input type="text" id="website" name="website" class="app-input" value="{{ old('website', $partner->website) }}">
                 </div>
 
                 <div class="app-form-group md:col-span-2">
@@ -75,19 +113,111 @@
                         <span>Aktivan</span>
                     </label>
                 </div>
+            </div>
+        </div>
+
+        <div class="app-card p-6">
+            <div class="mb-5">
+                <h3 class="text-base font-semibold">Dodatno</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="app-form-group">
+                    <label class="app-label" for="email">Email</label>
+                    <input type="email" id="email" name="email" class="app-input" value="{{ old('email', $partner->email) }}">
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label" for="phone">Telefon</label>
+                    <input type="text" id="phone" name="phone" class="app-input" value="{{ old('phone', $partner->phone) }}">
+                </div>
+
+                <div class="app-form-group md:col-span-2">
+                    <label class="app-label" for="website">Website</label>
+                    <input type="text" id="website" name="website" class="app-input" value="{{ old('website', $partner->website) }}">
+                </div>
 
                 <div class="app-form-group md:col-span-2">
                     <label class="app-label" for="notes">Bilješke</label>
                     <textarea id="notes" name="notes" rows="4" class="app-textarea">{{ old('notes', $partner->notes) }}</textarea>
                 </div>
             </div>
+        </div>
 
-            <div class="mt-6 flex gap-3">
+        <div class="app-card p-4">
+            <div class="flex flex-wrap gap-3">
                 <button type="submit" class="app-button">Spremi izmjene</button>
                 <a href="{{ route('partners.index') }}" class="app-button-secondary">Odustani</a>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const refreshUrl = @json(route('partners.refresh-from-sudreg', $partner));
+    const csrfToken = @json(csrf_token());
+
+    const oibInput = document.getElementById('oib');
+    const nameInput = document.getElementById('name');
+    const legalNameInput = document.getElementById('legal_name');
+    const addressInput = document.getElementById('address');
+    const cityInput = document.getElementById('city');
+    const postalCodeInput = document.getElementById('postal_code');
+    const countryInput = document.getElementById('country');
+    const statusBox = document.getElementById('registry-status');
+    const refreshButton = document.getElementById('refresh-from-sudreg');
+
+    const setStatus = (message, isError = false) => {
+        statusBox.textContent = message || '';
+        statusBox.className = isError ? 'text-sm text-red-400' : 'text-sm app-muted';
+    };
+
+    const fillOfficialFields = (partner) => {
+        nameInput.value = partner.name ?? '';
+        legalNameInput.value = partner.legal_name ?? '';
+        addressInput.value = partner.address ?? '';
+        cityInput.value = partner.city ?? '';
+        postalCodeInput.value = partner.postal_code ?? '';
+        countryInput.value = partner.country ?? 'Hrvatska';
+        oibInput.value = partner.oib ?? oibInput.value;
+    };
+
+    refreshButton.addEventListener('click', async () => {
+        const oib = (oibInput.value || '').trim();
+
+        if (!oib) {
+            setStatus('Partner mora imati OIB za osvježavanje iz registra.', true);
+            return;
+        }
+
+        setStatus('Osvježavam službene podatke iz Sudskog registra...');
+
+        try {
+            const response = await fetch(refreshUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({}),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.ok) {
+                setStatus(data.message || 'Greška pri osvježavanju podataka.', true);
+                return;
+            }
+
+            fillOfficialFields(data.partner || {});
+            setStatus(data.message || 'Podaci su osvježeni.');
+        } catch (error) {
+            setStatus('Greška pri komunikaciji sa serverom.', true);
+        }
+    });
+});
+</script>
 
 @endsection

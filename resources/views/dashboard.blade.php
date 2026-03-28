@@ -214,7 +214,7 @@
                 @endif
             </form>
 
-            @if($recentActivities->count())
+                       @if($recentActivities->count())
                 <div class="space-y-4 text-sm">
                     @foreach($recentActivities as $activity)
                         <div class="border-b border-white/10 pb-4 last:border-b-0 last:pb-0">

@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'sudreg' => [
+        'client_id' => env('SUDREG_CLIENT_ID'),
+        'client_secret' => env('SUDREG_CLIENT_SECRET'),
+        'token_url' => env('SUDREG_TOKEN_URL', 'https://sudreg-data.gov.hr/api/oauth/token'),
+        'base_url' => env('SUDREG_BASE_URL', 'https://sudreg-data.gov.hr/api/javni/v1'),
+    ],
+
 ];
