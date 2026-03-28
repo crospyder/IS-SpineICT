@@ -11,8 +11,12 @@ use Illuminate\Support\Collection;
 
 class DashboardService
 {
-    public function getData(?string $activityEntity = null, ?int $activityUserId = null, int $activityLimit = 10): array
-    {
+    public function getData(
+        ?string $activityEntity = null,
+        ?int $activityUserId = null,
+        int $activityLimit = 10,
+        ?string $alertsFilter = null
+    ): array {
         $partnersCount = Partner::count();
         $activePartnersCount = Partner::where('is_active', true)->count();
 
@@ -22,7 +26,7 @@ class DashboardService
             ->whereNull('completed_date')
             ->count();
 
-        $alertsList = $this->buildAlertsList();
+        $alertsList = $this->buildAlertsList($alertsFilter);
         $nextItems = $this->buildNextItemsList();
 
         $recentActivities = $this->buildRecentActivitiesQuery(
@@ -44,6 +48,7 @@ class DashboardService
             'activityEntity' => $activityEntity,
             'activityMine' => $activityUserId !== null,
             'activityLimit' => $activityLimit,
+            'alertsFilter' => $alertsFilter,
             'activityAvailableEntities' => [
                 'obligation' => 'Obveze',
                 'service' => 'Usluge',
@@ -68,24 +73,54 @@ class DashboardService
         return $query;
     }
 
-    protected function buildAlertsList(): Collection
+    protected function buildAlertsList(?string $alertsFilter = null): Collection
     {
+        $today = now()->toDateString();
+
         $overdueObligations = Obligation::with('partner')
-            ->overdue()
+            ->whereNull('completed_date')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $today)
+            ->orderBy('due_date')
+            ->get()
+            ->map(fn (Obligation $obligation) => $this->mapObligationToDashboardItem($obligation));
+
+        $todayObligations = Obligation::with('partner')
+            ->whereNull('completed_date')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', $today)
             ->orderBy('due_date')
             ->get()
             ->map(fn (Obligation $obligation) => $this->mapObligationToDashboardItem($obligation));
 
         $overdueServices = PartnerService::with('partner')
             ->whereNotNull('expires_on')
-            ->whereDate('expires_on', '<', now()->toDateString())
+            ->whereDate('expires_on', '<', $today)
             ->orderBy('expires_on')
             ->get()
             ->map(fn (PartnerService $service) => $this->mapServiceToDashboardItem($service));
 
-        return $overdueObligations
-            ->concat($overdueServices)
-            ->sortBy('date')
+        $todayServices = PartnerService::with('partner')
+            ->whereNotNull('expires_on')
+            ->whereDate('expires_on', $today)
+            ->orderBy('expires_on')
+            ->get()
+            ->map(fn (PartnerService $service) => $this->mapServiceToDashboardItem($service));
+
+        $items = match ($alertsFilter) {
+            'today' => $todayObligations->concat($todayServices),
+            'overdue' => $overdueObligations->concat($overdueServices),
+            default => $overdueObligations
+                ->concat($overdueServices)
+                ->concat($todayObligations)
+                ->concat($todayServices),
+        };
+
+        return $items
+            ->sortBy([
+                fn ($item) => $item->status_label === 'Kasni' ? 0 : 1,
+                'date',
+            ])
             ->values();
     }
 
@@ -94,14 +129,14 @@ class DashboardService
         $upcomingObligations = Obligation::with('partner')
             ->whereNull('completed_date')
             ->whereNotNull('due_date')
-            ->whereDate('due_date', '>=', now()->toDateString())
+            ->whereDate('due_date', '>', now()->toDateString())
             ->orderBy('due_date')
             ->get()
             ->map(fn (Obligation $obligation) => $this->mapObligationToDashboardItem($obligation));
 
         $upcomingServices = PartnerService::with('partner')
             ->whereNotNull('expires_on')
-            ->whereDate('expires_on', '>=', now()->toDateString())
+            ->whereDate('expires_on', '>', now()->toDateString())
             ->orderBy('expires_on')
             ->get()
             ->map(fn (PartnerService $service) => $this->mapServiceToDashboardItem($service));

@@ -38,18 +38,26 @@
                     </summary>
 
                     <div class="absolute right-0 top-full mt-2 w-[520px] max-w-[92vw] overflow-x-hidden app-card p-4 shadow-2xl z-50">
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <div>
-                                <div class="text-sm font-semibold">Aktivna upozorenja</div>
-                                <div class="text-xs app-muted">
-                                    Kasni: {{ $topbarNotificationOverdueCount ?? 0 }} · Danas: {{ $topbarNotificationTodayCount ?? 0 }}
-                                </div>
-                            </div>
+                        <div class="flex items-start justify-between gap-3 mb-3">
+    <div>
+        <div class="text-sm font-semibold">Aktivna upozorenja</div>
+        <div class="text-xs app-muted">
+            Kasni: {{ $topbarNotificationOverdueCount ?? 0 }} · Danas: {{ $topbarNotificationTodayCount ?? 0 }}
+        </div>
+    </div>
 
-                            <a href="{{ route('dashboard') }}" class="app-link text-xs">
-                                Otvori dashboard
-                            </a>
-                        </div>
+    <div class="flex flex-col items-end gap-1 text-xs">
+        <a href="{{ route('dashboard', ['alerts' => 'all']) }}" class="app-link">
+            Sve
+        </a>
+        <a href="{{ route('dashboard', ['alerts' => 'overdue']) }}" class="app-link">
+            Samo kasni
+        </a>
+        <a href="{{ route('dashboard', ['alerts' => 'today']) }}" class="app-link">
+            Samo danas
+        </a>
+    </div>
+</div>
 
                         @if(($topbarNotificationItems ?? collect())->count())
                             <div class="flex flex-col gap-3 max-h-96 overflow-y-auto overflow-x-hidden pr-1">

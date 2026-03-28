@@ -51,9 +51,34 @@
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
             <div class="app-card p-5 xl:col-span-8 min-w-0">
                 <div class="flex justify-between items-center gap-4 mb-4">
-                    <h2 class="text-lg font-semibold">Kasni / isteklo</h2>
-                    <div class="text-sm app-muted text-right">Problemi koji traže pažnju</div>
-                </div>
+    <div>
+        <h2 class="text-lg font-semibold">
+            @if($alertsFilter === 'overdue')
+                Kasni / isteklo
+            @elseif($alertsFilter === 'today')
+                Danas
+            @else
+                Kasni / isteklo + danas
+            @endif
+        </h2>
+
+        <div class="text-sm app-muted mt-1">
+            @if($alertsFilter === 'overdue')
+                Prikaz samo kašnjenja i isteklih usluga
+            @elseif($alertsFilter === 'today')
+                Prikaz obveza i usluga koje dospijevaju danas
+            @else
+                Aktivna upozorenja koja traže pažnju
+            @endif
+        </div>
+    </div>
+
+    @if($alertsFilter)
+        <a href="{{ route('dashboard') }}" class="app-link text-sm whitespace-nowrap">
+            Reset filter
+        </a>
+    @endif
+</div>
 
                 @if($alertsList->count())
                     <div class="overflow-x-auto">
