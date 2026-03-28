@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 
 class DashboardService
 {
-    public function getData(): array
+    public function getData(?string $activityEntity = null, ?int $activityUserId = null, int $activityLimit = 10): array
     {
         $partnersCount = Partner::count();
         $activePartnersCount = Partner::where('is_active', true)->count();
@@ -25,9 +25,11 @@ class DashboardService
         $alertsList = $this->buildAlertsList();
         $nextItems = $this->buildNextItemsList();
 
-        $recentActivities = ActivityLog::with('user')
-            ->latest()
-            ->limit(10)
+        $recentActivities = $this->buildRecentActivitiesQuery(
+            activityEntity: $activityEntity,
+            activityUserId: $activityUserId
+        )
+            ->limit($activityLimit)
             ->get();
 
         return [
@@ -39,7 +41,31 @@ class DashboardService
             'alertsList' => $alertsList,
             'nextItems' => $nextItems,
             'recentActivities' => $recentActivities,
+            'activityEntity' => $activityEntity,
+            'activityMine' => $activityUserId !== null,
+            'activityLimit' => $activityLimit,
+            'activityAvailableEntities' => [
+                'obligation' => 'Obveze',
+                'service' => 'Usluge',
+                'partner' => 'Partneri',
+                'procurement' => 'Kalkulacije',
+            ],
         ];
+    }
+
+    protected function buildRecentActivitiesQuery(?string $activityEntity = null, ?int $activityUserId = null)
+    {
+        $query = ActivityLog::with('user')->latest();
+
+        if ($activityEntity) {
+            $query->where('entity_type', $activityEntity);
+        }
+
+        if ($activityUserId) {
+            $query->where('user_id', $activityUserId);
+        }
+
+        return $query;
     }
 
     protected function buildAlertsList(): Collection

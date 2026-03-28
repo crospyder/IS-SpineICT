@@ -146,42 +146,74 @@
     </div>
 
     <div class="app-card p-5">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-semibold">Zadnje aktivnosti</h2>
-        </div>
+    <div class="flex justify-between items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">Zadnje aktivnosti</h2>
 
-        @if($recentActivities->count())
-            <div class="space-y-3">
-                @foreach($recentActivities as $activity)
-                    <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="text-sm font-medium">
-                                    {{ $activity->title ?: $activity->entity_label }}
-                                </div>
+        <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-center gap-2">
+            <select name="activity_entity" class="app-input py-2 px-3 text-sm">
+                <option value="">Sve</option>
+                @foreach($activityAvailableEntities as $entityValue => $entityLabel)
+                    <option value="{{ $entityValue }}" @selected($activityEntity === $entityValue)>
+                        {{ $entityLabel }}
+                    </option>
+                @endforeach
+            </select>
 
-                                @if(!empty($activity->message))
-                                    <div class="text-sm mt-1 app-muted break-words">
-                                        {{ $activity->message }}
-                                    </div>
-                                @endif
+            <label class="inline-flex items-center gap-2 text-sm app-muted">
+                <input type="checkbox" name="activity_mine" value="1" @checked($activityMine)>
+                Moje
+            </label>
 
-                                <div class="text-xs app-muted mt-2">
-                                    {{ $activity->user->name ?? 'Sustav' }}
-                                </div>
+            <select name="activity_limit" class="app-input py-2 px-3 text-sm">
+                <option value="10" @selected($activityLimit === 10)>10</option>
+                <option value="25" @selected($activityLimit === 25)>25</option>
+                <option value="50" @selected($activityLimit === 50)>50</option>
+            </select>
+
+            <button type="submit" class="app-button-secondary py-2 px-3 text-sm">
+                Primijeni
+            </button>
+
+            @if($activityEntity || $activityMine || $activityLimit !== 10)
+                <a href="{{ route('dashboard') }}" class="app-link text-sm">
+                    Reset
+                </a>
+            @endif
+        </form>
+    </div>
+
+    @if($recentActivities->count())
+        <div class="space-y-3">
+            @foreach($recentActivities as $activity)
+                <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-sm font-medium">
+                                {{ $activity->title ?: $activity->entity_label }}
                             </div>
 
-                            <div class="text-xs app-muted whitespace-nowrap shrink-0">
-                                {{ $activity->created_at->diffForHumans() }}
+                            @if(!empty($activity->message))
+                                <div class="text-sm mt-1 app-muted break-words">
+                                    {{ $activity->message }}
+                                </div>
+                            @endif
+
+                            <div class="text-xs app-muted mt-2">
+                                {{ $activity->user->name ?? 'Sustav' }}
                             </div>
                         </div>
+
+                        <div class="text-xs app-muted whitespace-nowrap shrink-0">
+                            {{ $activity->created_at->diffForHumans() }}
+                        </div>
                     </div>
-                @endforeach
-            </div>
-        @else
-            <div class="app-muted">Još nema aktivnosti.</div>
-        @endif
-    </div>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <div class="app-muted">Nema aktivnosti za odabrani filter.</div>
+    @endif
+</div>
 
 </div>
 

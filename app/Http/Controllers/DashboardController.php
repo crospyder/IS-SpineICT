@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DashboardService;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -11,8 +12,20 @@ class DashboardController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('dashboard', $this->dashboardService->getData());
+        $activityEntity = $request->string('activity_entity')->toString() ?: null;
+        $activityMine = $request->boolean('activity_mine');
+        $activityLimit = (int) $request->integer('activity_limit', 10);
+
+        if (!in_array($activityLimit, [10, 25, 50], true)) {
+            $activityLimit = 10;
+        }
+
+        return view('dashboard', $this->dashboardService->getData(
+            activityEntity: $activityEntity,
+            activityUserId: $activityMine ? auth()->id() : null,
+            activityLimit: $activityLimit,
+        ));
     }
 }
