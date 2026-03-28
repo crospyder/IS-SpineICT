@@ -185,30 +185,59 @@
     @if($recentActivities->count())
         <div class="space-y-3">
             @foreach($recentActivities as $activity)
-                <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="text-sm font-medium">
-                                {{ $activity->title ?: $activity->entity_label }}
-                            </div>
-
-                            @if(!empty($activity->message))
-                                <div class="text-sm mt-1 app-muted break-words">
-                                    {{ $activity->message }}
-                                </div>
-                            @endif
-
-                            <div class="text-xs app-muted mt-2">
-                                {{ $activity->user->name ?? 'Sustav' }}
-                            </div>
-                        </div>
-
-                        <div class="text-xs app-muted whitespace-nowrap shrink-0">
-                            {{ $activity->created_at->diffForHumans() }}
-                        </div>
-                    </div>
+    <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 w-full">
+                <div class="text-sm font-medium">
+                    {{ $activity->title ?: $activity->entity_label }}
                 </div>
-            @endforeach
+
+                @if(!empty($activity->message))
+                    <div class="text-sm mt-1 app-muted break-words">
+                        {{ $activity->message }}
+                    </div>
+                @endif
+
+                <div class="text-xs app-muted mt-2">
+                    {{ $activity->user->name ?? 'Sustav' }}
+                </div>
+
+                @if($activity->has_changes)
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-xs app-muted select-none">
+                            Prikaži promjene
+                        </summary>
+
+                        <div class="mt-3 overflow-x-auto">
+                            <table class="app-table text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Polje</th>
+                                        <th>Prije</th>
+                                        <th>Poslije</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($activity->change_rows as $change)
+                                        <tr class="app-row">
+                                            <td>{{ $change['label'] }}</td>
+                                            <td>{{ $change['old'] }}</td>
+                                            <td>{{ $change['new'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                @endif
+            </div>
+
+            <div class="text-xs app-muted whitespace-nowrap shrink-0">
+                {{ $activity->created_at->diffForHumans() }}
+            </div>
+        </div>
+    </div>
+@endforeach
         </div>
     @else
         <div class="app-muted">Nema aktivnosti za odabrani filter.</div>
