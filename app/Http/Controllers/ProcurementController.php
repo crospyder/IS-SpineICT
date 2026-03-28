@@ -31,19 +31,11 @@ class ProcurementController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('sale_currency')) {
-            $query->where('default_sale_currency', $request->sale_currency);
-        }
-
-        if ($request->filled('purchase_currency')) {
-            $query->where('default_purchase_currency', $request->purchase_currency);
-        }
-
         $items = $query->paginate(20)->withQueryString();
 
         return view('procurements.index', [
             'items' => $items,
-            'filters' => $request->only(['q', 'status', 'sale_currency', 'purchase_currency']),
+            'filters' => $request->only(['q', 'status']),
             'statuses' => [
                 'draft' => 'Draft',
                 'in_review' => 'U obradi',
@@ -53,7 +45,6 @@ class ProcurementController extends Controller
                 'rejected' => 'Odbijeno',
                 'archived' => 'Arhivirano',
             ],
-            'currencies' => ['EUR', 'USD'],
         ]);
     }
 
@@ -82,10 +73,6 @@ class ProcurementController extends Controller
             'status' => 'nullable|string|max:50',
             'offer_date' => 'nullable|date',
             'valid_until' => 'nullable|date|after_or_equal:offer_date',
-            'default_sale_currency' => 'required|in:EUR,USD',
-            'default_purchase_currency' => 'required|in:EUR,USD',
-            'fx_eur_to_usd' => 'required|numeric|min:0.000001',
-            'fx_usd_to_eur' => 'required|numeric|min:0.000001',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'notes' => 'nullable|string',
         ]);
@@ -134,10 +121,6 @@ class ProcurementController extends Controller
             'status' => 'required|string|max:50',
             'offer_date' => 'nullable|date',
             'valid_until' => 'nullable|date|after_or_equal:offer_date',
-            'default_sale_currency' => 'required|in:EUR,USD',
-            'default_purchase_currency' => 'required|in:EUR,USD',
-            'fx_eur_to_usd' => 'required|numeric|min:0.000001',
-            'fx_usd_to_eur' => 'required|numeric|min:0.000001',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'notes' => 'nullable|string',
         ]);
@@ -158,141 +141,137 @@ class ProcurementController extends Controller
             ->route('procurements.index')
             ->with('success', 'Kalkulacija je obrisana.');
     }
+
     public function storeItem(Request $request, Procurement $procurement)
-{
-    $data = $request->validate([
-        'sort_order' => 'nullable|integer|min:0',
-        'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
-        'name' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'quantity' => 'required|numeric|min:0.001',
-        'supplier_origin' => 'required|in:domestic,foreign',
-        'supplier_name' => 'nullable|string|max:255',
-        'purchase_currency' => 'required|in:EUR,USD',
-        'sale_currency' => 'required|in:EUR,USD',
-        'purchase_net_unit' => 'required|numeric|min:0',
-        'sale_net_unit' => 'required|numeric|min:0',
-        'purchase_vat_rate' => 'required|numeric|min:0|max:100',
-        'sale_vat_rate' => 'required|numeric|min:0|max:100',
-        'is_optional' => 'nullable|boolean',
-        'status_flag' => 'nullable|string|max:30',
-        'notes' => 'nullable|string',
-    ]);
+    {
+        $data = $request->validate([
+            'sort_order' => 'nullable|integer|min:0',
+            'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'quantity' => 'required|numeric|min:0.001',
+            'supplier_origin' => 'required|in:domestic,foreign',
+            'supplier_name' => 'nullable|string|max:255',
+            'purchase_net_unit' => 'required|numeric|min:0',
+            'sale_net_unit' => 'required|numeric|min:0',
+            'purchase_vat_rate' => 'required|numeric|min:0|max:100',
+            'sale_vat_rate' => 'required|numeric|min:0|max:100',
+            'is_optional' => 'nullable|boolean',
+            'status_flag' => 'nullable|string|max:30',
+            'notes' => 'nullable|string',
+        ]);
 
-    $data['sort_order'] = $data['sort_order'] ?? ((int) $procurement->items()->max('sort_order') + 1);
-    $data['is_optional'] = $request->boolean('is_optional');
+        $data['sort_order'] = $data['sort_order'] ?? ((int) $procurement->items()->max('sort_order') + 1);
+        $data['is_optional'] = $request->boolean('is_optional');
 
-    $procurement->items()->create($data);
+        $procurement->items()->create($data);
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Stavka je dodana.');
-}
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Stavka je dodana.');
+    }
 
-public function updateItem(Request $request, Procurement $procurement, ProcurementItem $procurementItem)
-{
-    abort_unless($procurementItem->procurement_id === $procurement->id, 404);
+    public function updateItem(Request $request, Procurement $procurement, ProcurementItem $procurementItem)
+    {
+        abort_unless($procurementItem->procurement_id === $procurement->id, 404);
 
-    $data = $request->validate([
-        'sort_order' => 'nullable|integer|min:0',
-        'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
-        'name' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'quantity' => 'required|numeric|min:0.001',
-        'supplier_origin' => 'required|in:domestic,foreign',
-        'supplier_name' => 'nullable|string|max:255',
-        'purchase_currency' => 'required|in:EUR,USD',
-        'sale_currency' => 'required|in:EUR,USD',
-        'purchase_net_unit' => 'required|numeric|min:0',
-        'sale_net_unit' => 'required|numeric|min:0',
-        'purchase_vat_rate' => 'required|numeric|min:0|max:100',
-        'sale_vat_rate' => 'required|numeric|min:0|max:100',
-        'is_optional' => 'nullable|boolean',
-        'status_flag' => 'nullable|string|max:30',
-        'notes' => 'nullable|string',
-    ]);
+        $data = $request->validate([
+            'sort_order' => 'nullable|integer|min:0',
+            'item_type' => 'required|in:goods,service,software,hardware,subscription,other',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'quantity' => 'required|numeric|min:0.001',
+            'supplier_origin' => 'required|in:domestic,foreign',
+            'supplier_name' => 'nullable|string|max:255',
+            'purchase_net_unit' => 'required|numeric|min:0',
+            'sale_net_unit' => 'required|numeric|min:0',
+            'purchase_vat_rate' => 'required|numeric|min:0|max:100',
+            'sale_vat_rate' => 'required|numeric|min:0|max:100',
+            'is_optional' => 'nullable|boolean',
+            'status_flag' => 'nullable|string|max:30',
+            'notes' => 'nullable|string',
+        ]);
 
-    $data['is_optional'] = $request->boolean('is_optional');
+        $data['is_optional'] = $request->boolean('is_optional');
 
-    $procurementItem->update($data);
+        $procurementItem->update($data);
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Stavka je ažurirana.');
-}
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Stavka je ažurirana.');
+    }
 
-public function destroyItem(Procurement $procurement, ProcurementItem $procurementItem)
-{
-    abort_unless($procurementItem->procurement_id === $procurement->id, 404);
+    public function destroyItem(Procurement $procurement, ProcurementItem $procurementItem)
+    {
+        abort_unless($procurementItem->procurement_id === $procurement->id, 404);
 
-    $procurementItem->delete();
+        $procurementItem->delete();
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Stavka je obrisana.');
-}
-public function storeCost(Request $request, Procurement $procurement)
-{
-    $data = $request->validate([
-        'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
-        'description' => 'required|string|max:255',
-        'quantity' => 'required|numeric|min:0.001',
-        'unit' => 'nullable|string|max:50',
-        'currency' => 'required|in:EUR,USD',
-        'net_amount' => 'required|numeric|min:0',
-        'vat_rate' => 'required|numeric|min:0|max:100',
-        'supplier_origin' => 'required|in:domestic,foreign',
-        'include_in_offer' => 'nullable|boolean',
-        'include_in_margin' => 'nullable|boolean',
-        'notes' => 'nullable|string',
-    ]);
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Stavka je obrisana.');
+    }
 
-    $data['include_in_offer'] = $request->boolean('include_in_offer');
-    $data['include_in_margin'] = $request->boolean('include_in_margin', true);
+    public function storeCost(Request $request, Procurement $procurement)
+    {
+        $data = $request->validate([
+            'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
+            'description' => 'required|string|max:255',
+            'quantity' => 'required|numeric|min:0.001',
+            'unit' => 'nullable|string|max:50',
+            'net_amount' => 'required|numeric|min:0',
+            'vat_rate' => 'required|numeric|min:0|max:100',
+            'supplier_origin' => 'required|in:domestic,foreign',
+            'include_in_offer' => 'nullable|boolean',
+            'include_in_margin' => 'nullable|boolean',
+            'notes' => 'nullable|string',
+        ]);
 
-    $procurement->costs()->create($data);
+        $data['include_in_offer'] = $request->boolean('include_in_offer');
+        $data['include_in_margin'] = $request->boolean('include_in_margin', true);
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Trošak je dodan.');
-}
+        $procurement->costs()->create($data);
 
-public function updateCost(Request $request, Procurement $procurement, ProcurementCost $procurementCost)
-{
-    abort_unless($procurementCost->procurement_id === $procurement->id, 404);
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Trošak je dodan.');
+    }
 
-    $data = $request->validate([
-        'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
-        'description' => 'required|string|max:255',
-        'quantity' => 'required|numeric|min:0.001',
-        'unit' => 'nullable|string|max:50',
-        'currency' => 'required|in:EUR,USD',
-        'net_amount' => 'required|numeric|min:0',
-        'vat_rate' => 'required|numeric|min:0|max:100',
-        'supplier_origin' => 'required|in:domestic,foreign',
-        'include_in_offer' => 'nullable|boolean',
-        'include_in_margin' => 'nullable|boolean',
-        'notes' => 'nullable|string',
-    ]);
+    public function updateCost(Request $request, Procurement $procurement, ProcurementCost $procurementCost)
+    {
+        abort_unless($procurementCost->procurement_id === $procurement->id, 404);
 
-    $data['include_in_offer'] = $request->boolean('include_in_offer');
-    $data['include_in_margin'] = $request->boolean('include_in_margin');
+        $data = $request->validate([
+            'cost_type' => 'required|in:field,logistics,shipping,customs,travel,service,other',
+            'description' => 'required|string|max:255',
+            'quantity' => 'required|numeric|min:0.001',
+            'unit' => 'nullable|string|max:50',
+            'net_amount' => 'required|numeric|min:0',
+            'vat_rate' => 'required|numeric|min:0|max:100',
+            'supplier_origin' => 'required|in:domestic,foreign',
+            'include_in_offer' => 'nullable|boolean',
+            'include_in_margin' => 'nullable|boolean',
+            'notes' => 'nullable|string',
+        ]);
 
-    $procurementCost->update($data);
+        $data['include_in_offer'] = $request->boolean('include_in_offer');
+        $data['include_in_margin'] = $request->boolean('include_in_margin');
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Trošak je ažuriran.');
-}
+        $procurementCost->update($data);
 
-public function destroyCost(Procurement $procurement, ProcurementCost $procurementCost)
-{
-    abort_unless($procurementCost->procurement_id === $procurement->id, 404);
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Trošak je ažuriran.');
+    }
 
-    $procurementCost->delete();
+    public function destroyCost(Procurement $procurement, ProcurementCost $procurementCost)
+    {
+        abort_unless($procurementCost->procurement_id === $procurement->id, 404);
 
-    return redirect()
-        ->route('procurements.edit', $procurement)
-        ->with('success', 'Trošak je obrisan.');
-}
+        $procurementCost->delete();
+
+        return redirect()
+            ->route('procurements.edit', $procurement)
+            ->with('success', 'Trošak je obrisan.');
+    }
 }

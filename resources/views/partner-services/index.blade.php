@@ -32,7 +32,7 @@
         </div>
 
         <div>
-            <label class="app-label" for="active">Status</label>
+            <label class="app-label" for="active">Aktivnost</label>
             <select id="active" name="active" class="app-select">
                 <option value="">Svi</option>
                 <option value="1" {{ request('active') === '1' ? 'selected' : '' }}>Aktivne</option>
@@ -54,6 +54,17 @@
     </div>
 </form>
 
+@if ($errors->any())
+    <div class="app-card p-4 mb-4 border border-red-500/30 bg-red-500/10">
+        <div class="font-medium mb-2">Greška:</div>
+        <ul class="text-sm space-y-1">
+            @foreach ($errors->all() as $error)
+                <li>— {{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <div class="app-card overflow-hidden">
     <table class="app-table">
         <thead>
@@ -64,7 +75,8 @@
                 <th>Tip</th>
                 <th>Domena</th>
                 <th>Provider</th>
-                <th>Status</th>
+                <th>Obnova</th>
+                <th>Aktivnost</th>
                 <th>Istek</th>
                 <th class="text-right">Akcije</th>
             </tr>
@@ -86,21 +98,44 @@
                 <td>{{ $service->service_type ?: '-' }}</td>
                 <td>{{ $service->domain_name ?: '-' }}</td>
                 <td>{{ $service->provider ?: '-' }}</td>
-                <td>{{ $service->status ?: '-' }}</td>
+
+                <td>
+                    <div class="flex flex-col gap-1">
+                        <span class="app-badge {{ $service->isRecurring() ? 'badge-soon' : '' }}">
+                            {{ $service->renewal_label }}
+                        </span>
+
+                        @if($service->auto_renew)
+                            <span class="text-xs app-muted">Auto renew</span>
+                        @endif
+                    </div>
+                </td>
+
+                <td>
+                    <span class="{{ $service->lifecycle_status_class }}">
+                        {{ $service->lifecycle_status_label }}
+                    </span>
+                </td>
 
                 <td>
                     @if($service->expires_on)
-                        @php
-                            $expires = \Carbon\Carbon::parse($service->expires_on);
-                        @endphp
+                        <div class="flex flex-col gap-1">
+                            <span class="{{ $service->expiry_badge_class }}">
+                                {{ $service->expiry_label }}
+                            </span>
 
-                        @if($expires->isPast())
-                            <span class="app-badge badge-overdue">{{ $expires->format('Y-m-d') }}</span>
-                        @elseif($expires->lte(now()->addDays(30)))
-                            <span class="app-badge badge-soon">{{ $expires->format('Y-m-d') }}</span>
-                        @else
-                            <span class="app-badge badge-ok">{{ $expires->format('Y-m-d') }}</span>
-                        @endif
+                            @if($service->days_remaining !== null)
+                                <span class="text-xs app-muted">
+                                    @if($service->days_remaining < 0)
+                                        Kasni {{ abs($service->days_remaining) }} dana
+                                    @elseif($service->days_remaining === 0)
+                                        Ističe danas
+                                    @else
+                                        Za {{ $service->days_remaining }} dana
+                                    @endif
+                                </span>
+                            @endif
+                        </div>
                     @else
                         -
                     @endif
@@ -108,6 +143,20 @@
 
                 <td class="text-right">
                     <div class="flex justify-end gap-2">
+                        @if($service->canBeRenewed())
+                            <form action="{{ route('partner-services.update', $service) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Produljiti uslugu prema definiranom periodu obnove?');">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="renew_action" value="1">
+
+                                <button type="submit" class="app-button-secondary">
+                                    Produlji
+                                </button>
+                            </form>
+                        @endif
+
                         <a href="{{ route('partner-services.edit', $service) }}" class="app-button-secondary">
                             Uredi
                         </a>
@@ -127,7 +176,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="9" class="text-center py-6 app-muted">
+                <td colspan="10" class="text-center py-6 app-muted">
                     Nema usluga
                 </td>
             </tr>

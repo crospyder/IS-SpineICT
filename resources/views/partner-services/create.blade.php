@@ -13,6 +13,17 @@
         </a>
     </div>
 
+    @if ($errors->any())
+        <div class="app-card p-4 mb-4 border border-red-500/30 bg-red-500/10">
+            <div class="font-medium mb-2">Greška pri unosu:</div>
+            <ul class="text-sm space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li>— {{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="app-card p-6">
         <form action="{{ route('partner-services.store') }}" method="POST">
             @csrf
@@ -62,7 +73,7 @@
 
                 <div class="app-form-group">
                     <label class="app-label" for="renewal_period">Period obnove</label>
-                    <input type="text" id="renewal_period" name="renewal_period" class="app-input" value="{{ old('renewal_period') }}">
+                    <input type="text" id="renewal_period" name="renewal_period" class="app-input" value="{{ old('renewal_period') }}" placeholder="npr. mjesečno, godišnje, 12 mjeseci">
                 </div>
 
                 <div class="app-form-group">
@@ -76,7 +87,7 @@
                 </div>
 
                 <div class="app-form-group">
-                    <label class="app-label" for="renewal_date">Datum obnove</label>
+                    <label class="app-label" for="renewal_date">Datum zadnje obnove</label>
                     <input type="date" id="renewal_date" name="renewal_date" class="app-input" value="{{ old('renewal_date') }}">
                 </div>
 
@@ -100,7 +111,7 @@
                 <div class="app-form-group flex items-end">
                     <label class="inline-flex items-center gap-2">
                         <input type="checkbox" name="is_active" value="1" {{ old('is_active', 1) ? 'checked' : '' }}>
-                        <span>Aktivna</span>
+                        <span>Aktivna usluga</span>
                     </label>
                 </div>
 

@@ -9,7 +9,7 @@
         <div>
             <h2 class="text-lg font-semibold">Nova kalkulacija</h2>
             <div class="text-sm app-muted mt-1">
-                Osnovni dokument + partner + valute + FX snapshot
+                Osnovni dokument + partner + PDV
             </div>
         </div>
 
@@ -75,48 +75,6 @@
                 <div class="app-form-group">
                     <label class="app-label">Vrijedi do</label>
                     <input type="date" name="valid_until" class="app-input" value="{{ old('valid_until') }}">
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">Prodajna valuta *</label>
-                    <select name="default_sale_currency" class="app-select" required>
-                        <option value="EUR" @selected(old('default_sale_currency', 'EUR') === 'EUR')>EUR</option>
-                        <option value="USD" @selected(old('default_sale_currency') === 'USD')>USD</option>
-                    </select>
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">Nabavna valuta *</label>
-                    <select name="default_purchase_currency" class="app-select" required>
-                        <option value="EUR" @selected(old('default_purchase_currency', 'EUR') === 'EUR')>EUR</option>
-                        <option value="USD" @selected(old('default_purchase_currency') === 'USD')>USD</option>
-                    </select>
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">FX EUR → USD *</label>
-                    <input
-                        type="number"
-                        step="0.000001"
-                        min="0.000001"
-                        name="fx_eur_to_usd"
-                        class="app-input"
-                        value="{{ old('fx_eur_to_usd', '1.080000') }}"
-                        required
-                    >
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">FX USD → EUR *</label>
-                    <input
-                        type="number"
-                        step="0.000001"
-                        min="0.000001"
-                        name="fx_usd_to_eur"
-                        class="app-input"
-                        value="{{ old('fx_usd_to_eur', '0.925926') }}"
-                        required
-                    >
                 </div>
 
                 <div class="app-form-group">

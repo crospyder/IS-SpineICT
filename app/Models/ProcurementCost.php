@@ -13,10 +13,11 @@ class ProcurementCost extends Model
         'description',
         'quantity',
         'unit',
-        'currency',
         'net_amount',
         'vat_rate',
         'supplier_origin',
+        'include_in_offer',
+        'include_in_margin',
         'notes',
     ];
 
@@ -26,6 +27,8 @@ class ProcurementCost extends Model
             'quantity' => 'float',
             'net_amount' => 'float',
             'vat_rate' => 'float',
+            'include_in_offer' => 'boolean',
+            'include_in_margin' => 'boolean',
         ];
     }
 
@@ -38,13 +41,14 @@ class ProcurementCost extends Model
     {
         return $this->quantity * $this->net_amount;
     }
-    public function getVatTotalAttribute(): float
-{
-    return $this->total_net * ($this->vat_rate / 100);
-}
 
-public function getTotalGrossAttribute(): float
-{
-    return $this->total_net + $this->vat_total;
-}
+    public function getVatTotalAttribute(): float
+    {
+        return $this->total_net * ($this->vat_rate / 100);
+    }
+
+    public function getTotalGrossAttribute(): float
+    {
+        return $this->total_net + $this->vat_total;
+    }
 }

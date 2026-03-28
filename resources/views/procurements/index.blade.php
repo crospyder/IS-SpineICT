@@ -26,7 +26,7 @@
 
     <div class="app-card p-4 mb-6">
         <form method="GET" action="{{ route('procurements.index') }}">
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="app-form-group md:col-span-2">
                     <label class="app-label">Pretraga</label>
                     <input
@@ -49,30 +49,6 @@
                         @endforeach
                     </select>
                 </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">Prodajna valuta</label>
-                    <select name="sale_currency" class="app-select">
-                        <option value="">-- sve --</option>
-                        @foreach($currencies as $currency)
-                            <option value="{{ $currency }}" @selected(($filters['sale_currency'] ?? '') === $currency)>
-                                {{ $currency }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="app-form-group">
-                    <label class="app-label">Nabavna valuta</label>
-                    <select name="purchase_currency" class="app-select">
-                        <option value="">-- sve --</option>
-                        @foreach($currencies as $currency)
-                            <option value="{{ $currency }}" @selected(($filters['purchase_currency'] ?? '') === $currency)>
-                                {{ $currency }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
             </div>
 
             <div class="mt-4 flex gap-3">
@@ -91,9 +67,7 @@
                         <th>Partner</th>
                         <th>Referenca</th>
                         <th>Status</th>
-                        <th>Nabavna</th>
-                        <th>Prodajna</th>
-                        <th>FX</th>
+                        <th>Valuta</th>
                         <th>Datum</th>
                         <th></th>
                     </tr>
@@ -117,18 +91,7 @@
 
                             <td>{{ $statuses[$item->status] ?? $item->status }}</td>
 
-                            <td>{{ $item->default_purchase_currency }}</td>
-
-                            <td>{{ $item->default_sale_currency }}</td>
-
-                            <td>
-                                <div class="text-xs">
-                                    EUR/USD: {{ number_format((float) $item->fx_eur_to_usd, 4, ',', '.') }}
-                                </div>
-                                <div class="text-xs app-muted">
-                                    USD/EUR: {{ number_format((float) $item->fx_usd_to_eur, 4, ',', '.') }}
-                                </div>
-                            </td>
+                            <td>EUR</td>
 
                             <td>
                                 {{ $item->offer_date ? $item->offer_date->format('d.m.Y') : $item->created_at->format('d.m.Y') }}
@@ -142,7 +105,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="app-muted">
+                            <td colspan="7" class="app-muted">
                                 Nema kalkulacija.
                             </td>
                         </tr>

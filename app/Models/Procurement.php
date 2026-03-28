@@ -15,10 +15,6 @@ class Procurement extends Model
         'status',
         'offer_date',
         'valid_until',
-        'default_sale_currency',
-        'default_purchase_currency',
-        'fx_eur_to_usd',
-        'fx_usd_to_eur',
         'vat_rate',
         'notes',
     ];
@@ -28,17 +24,9 @@ class Procurement extends Model
         return [
             'offer_date' => 'date',
             'valid_until' => 'date',
-            'fx_eur_to_usd' => 'float',
-            'fx_usd_to_eur' => 'float',
             'vat_rate' => 'float',
         ];
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
 
     public function partner(): BelongsTo
     {

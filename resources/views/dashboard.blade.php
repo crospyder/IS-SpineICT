@@ -19,7 +19,7 @@
         <div class="text-3xl font-semibold">{{ $servicesCount }}</div>
         <div class="mt-2 text-sm flex flex-wrap gap-2">
             @if($expiringServicesCount > 0)
-                <span class="app-badge badge-soon">Ističe uskoro: {{ $expiringServicesCount }}</span>
+                <span class="app-badge badge-soon">Ističe / isteklo u 30 dana: {{ $expiringServicesCount }}</span>
             @else
                 <span class="app-badge badge-ok">Nema skorih isteka</span>
             @endif
@@ -27,11 +27,11 @@
     </div>
 
     <div class="app-card p-5">
-        <div class="text-sm app-muted mb-2">Obveze</div>
+        <div class="text-sm app-muted mb-2">Obveze i upozorenja</div>
         <div class="text-3xl font-semibold">{{ $obligationsCount }}</div>
         <div class="mt-2 text-sm flex flex-wrap gap-2">
             @if($overdueCount > 0)
-                <span class="app-badge badge-overdue">Kasni: {{ $overdueCount }}</span>
+                <span class="app-badge badge-overdue">Kasni / isteklo: {{ $overdueCount }}</span>
             @else
                 <span class="app-badge badge-ok">Nema kašnjenja</span>
             @endif
@@ -50,7 +50,7 @@
         <div class="text-sm app-muted mb-2">Uskoro dospijeva</div>
         <div class="text-3xl font-semibold">{{ $expiringCount }}</div>
         <div class="mt-2 text-sm app-muted">
-            Obveze u idućih 7 dana
+            Obveze i usluge u idućih 30 dana
         </div>
     </div>
 
@@ -61,7 +61,7 @@
     <div class="app-card p-5 xl:col-span-2">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold">Obveze koje kasne</h2>
-            <a href="{{ route('obligations.index', ['due' => 'overdue']) }}" class="app-link text-sm">Otvori popis</a>
+            <a href="{{ route('obligations.index') }}" class="app-link text-sm">Otvori popis</a>
         </div>
 
         @if($overdueList->count())
@@ -70,29 +70,29 @@
                     <tr>
                         <th>Partner</th>
                         <th>Naslov</th>
-                        <th>Rok</th>
+                        <th>Rok / istek</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($overdueList as $obligation)
+                    @foreach($overdueList as $entry)
                         <tr class="app-row">
-                            <td>{{ $obligation->partner->name ?? '-' }}</td>
+                            <td>{{ $entry->partner_name }}</td>
                             <td>
-                                <a href="{{ route('obligations.edit', $obligation) }}" class="app-link">
-                                    {{ $obligation->title }}
+                                <a href="{{ $entry->url }}" class="app-link">
+                                    {{ $entry->title }}
                                 </a>
                             </td>
-                            <td>{{ $obligation->due_date ? $obligation->due_date->format('d.m.Y') : '-' }}</td>
+                            <td>{{ $entry->date ? \Carbon\Carbon::parse($entry->date)->format('d.m.Y') : '-' }}</td>
                             <td>
-                                <span class="app-badge badge-overdue">Kasni</span>
+                                <span class="app-badge badge-overdue">{{ $entry->status_label }}</span>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         @else
-            <div class="app-muted">Nema obveza u kašnjenju.</div>
+            <div class="app-muted">Nema obveza ni usluga u kašnjenju.</div>
         @endif
     </div>
 
@@ -114,7 +114,7 @@
     <div class="app-card p-5">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold">Obveze danas</h2>
-            <a href="{{ route('obligations.index', ['due' => 'today']) }}" class="app-link text-sm">Otvori popis</a>
+            <a href="{{ route('obligations.index') }}" class="app-link text-sm">Otvori popis</a>
         </div>
 
         @if($todayList->count())
@@ -123,21 +123,21 @@
                     <tr>
                         <th>Partner</th>
                         <th>Naslov</th>
-                        <th>Rok</th>
+                        <th>Rok / istek</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($todayList as $obligation)
+                    @foreach($todayList as $entry)
                         <tr class="app-row">
-                            <td>{{ $obligation->partner->name ?? '-' }}</td>
+                            <td>{{ $entry->partner_name }}</td>
                             <td>
-                                <a href="{{ route('obligations.edit', $obligation) }}" class="app-link">
-                                    {{ $obligation->title }}
+                                <a href="{{ $entry->url }}" class="app-link">
+                                    {{ $entry->title }}
                                 </a>
                             </td>
                             <td>
                                 <span class="app-badge badge-soon">
-                                    {{ $obligation->due_date ? $obligation->due_date->format('d.m.Y') : '-' }}
+                                    {{ $entry->date ? \Carbon\Carbon::parse($entry->date)->format('d.m.Y') : '-' }}
                                 </span>
                             </td>
                         </tr>
@@ -145,14 +145,14 @@
                 </tbody>
             </table>
         @else
-            <div class="app-muted">Nema obveza koje dospijevaju danas.</div>
+            <div class="app-muted">Nema obveza ni usluga koje dospijevaju danas.</div>
         @endif
     </div>
 
     <div class="app-card p-5">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold">Obveze uskoro</h2>
-            <a href="{{ route('obligations.index', ['due' => 'soon']) }}" class="app-link text-sm">Otvori popis</a>
+            <a href="{{ route('obligations.index') }}" class="app-link text-sm">Otvori popis</a>
         </div>
 
         @if($expiringSoonList->count())
@@ -216,7 +216,11 @@
                                 </a>
                             </td>
                             <td>
-                                <span class="app-badge badge-soon">
+                                @php
+                                    $isExpired = $service->expires_on && \Carbon\Carbon::parse($service->expires_on)->isBefore(now()->startOfDay());
+                                @endphp
+
+                                <span class="app-badge {{ $isExpired ? 'badge-overdue' : 'badge-soon' }}">
                                     {{ $service->expires_on ? \Carbon\Carbon::parse($service->expires_on)->format('d.m.Y') : '-' }}
                                 </span>
                             </td>
@@ -225,49 +229,41 @@
                 </tbody>
             </table>
         @else
-            <div class="app-muted">Nema usluga pred istekom u idućih 30 dana.</div>
+            <div class="app-muted">Nema usluga s istekom u prethodnih ili idućih 30 dana.</div>
         @endif
     </div>
 
     <div class="app-card p-5">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-semibold">Zadnje dodani partneri</h2>
-            <a href="{{ route('partners.index') }}" class="app-link text-sm">Otvori popis</a>
+            <h2 class="text-lg font-semibold">Zadnje aktivnosti</h2>
         </div>
 
-        @if($recentPartnersList->count())
-            <table class="app-table">
-                <thead>
-                    <tr>
-                        <th>Partner</th>
-                        <th>Status</th>
-                        <th>Dodano</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($recentPartnersList as $partner)
-                        <tr class="app-row">
-                            <td>
-                                <a href="{{ route('partners.show', $partner) }}" class="app-link">
-                                    {{ $partner->name }}
-                                </a>
-                            </td>
-                            <td>
-                                @if($partner->is_active)
-                                    <span class="app-badge badge-ok">Aktivan</span>
-                                @else
-                                    <span class="app-badge">Neaktivan</span>
-                                @endif
-                            </td>
-                            <td>
-                                {{ $partner->created_at ? $partner->created_at->format('d.m.Y H:i') : '-' }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        @if($recentActivities->count())
+            <div class="space-y-3">
+                @foreach($recentActivities as $activity)
+                    <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-medium">
+                                    {{ $activity->entity_label }}
+                                </div>
+                                <div class="text-sm mt-1">
+                                    {{ $activity->message }}
+                                </div>
+                                <div class="text-xs app-muted mt-1">
+                                    {{ $activity->user->name ?? 'Sustav' }}
+                                </div>
+                            </div>
+
+                            <div class="text-xs app-muted whitespace-nowrap">
+                                {{ $activity->created_at->diffForHumans() }}
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         @else
-            <div class="app-muted">Nema nedavno dodanih partnera.</div>
+            <div class="app-muted">Još nema aktivnosti.</div>
         @endif
     </div>
 </div>

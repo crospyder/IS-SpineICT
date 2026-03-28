@@ -206,10 +206,15 @@
             </div>
 
             @if ($errors->any())
-                <div class="mt-4 app-badge badge-overdue">
-                    Provjeri unesene podatke.
-                </div>
-            @endif
+    <div class="mt-4 app-card p-4 border border-red-500/30 bg-red-500/10">
+        <div class="font-medium mb-2">Greška pri unosu:</div>
+        <ul class="text-sm space-y-1">
+            @foreach ($errors->all() as $error)
+                <li>— {{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
             <div class="mt-6 flex gap-3">
                 <button type="submit" class="app-button">Spremi izmjene</button>

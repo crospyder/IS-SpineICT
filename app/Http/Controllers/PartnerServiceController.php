@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Partner;
 use App\Models\PartnerService;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class PartnerServiceController extends Controller
@@ -19,9 +20,10 @@ class PartnerServiceController extends Controller
                     ->orWhere('domain_name', 'like', "%{$q}%")
                     ->orWhere('provider', 'like', "%{$q}%")
                     ->orWhere('registrar', 'like', "%{$q}%")
-                    ->orWhere('status', 'like', "%{$q}%");
-            })->orWhereHas('partner', function ($sub) use ($q) {
-                $sub->where('name', 'like', "%{$q}%");
+                    ->orWhere('status', 'like', "%{$q}%")
+                    ->orWhereHas('partner', function ($partnerSub) use ($q) {
+                        $partnerSub->where('name', 'like', "%{$q}%");
+                    });
             });
         }
 
@@ -31,7 +33,7 @@ class PartnerServiceController extends Controller
 
         if (request('expiring')) {
             $query->whereNotNull('expires_on')
-                  ->whereDate('expires_on', '<=', now()->addDays(30));
+                ->whereDate('expires_on', '<=', now()->addDays(30));
         }
 
         if (request('active') === '1') {
@@ -43,6 +45,7 @@ class PartnerServiceController extends Controller
         }
 
         $partnerServices = $query
+            ->orderByRaw('CASE WHEN expires_on IS NULL THEN 1 ELSE 0 END')
             ->orderBy('expires_on')
             ->orderBy('name')
             ->get();
@@ -82,10 +85,30 @@ class PartnerServiceController extends Controller
 
         $data['auto_renew'] = $request->boolean('auto_renew');
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['status'] = $data['is_active'] ? 'active' : 'inactive';
+        $data['resolved'] = false;
 
-        PartnerService::create($data);
+        $service = PartnerService::create($data);
 
-        return redirect()->route('partner-services.index');
+        ActivityLogger::log(
+            subject: $service,
+            event: 'created',
+            entityType: 'service',
+            title: $service->name,
+            message: 'Dodana usluga "' . $service->name . '" za partnera "' . ($service->partner->name ?? '-') . '".',
+            newValues: [
+                'partner_id' => $service->partner_id,
+                'name' => $service->name,
+                'service_type' => $service->service_type,
+                'expires_on' => optional($service->expires_on)->toDateString(),
+                'renewal_period' => $service->renewal_period,
+                'is_active' => $service->is_active,
+            ]
+        );
+
+        return redirect()
+            ->route('partner-services.index')
+            ->with('success', 'Usluga je spremljena.');
     }
 
     public function show(string $id)
@@ -105,6 +128,48 @@ class PartnerServiceController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $partnerService = PartnerService::findOrFail($id);
+
+        if ($request->boolean('renew_action')) {
+            $oldExpiry = optional($partnerService->expires_on)->toDateString();
+            $newExpiry = $partnerService->calculateRenewedExpirationDate();
+
+            if (!$newExpiry) {
+                return redirect()
+                    ->route('partner-services.index')
+                    ->withErrors([
+                        'renewal_period' => 'Usluga nema prepoznat period obnove pa se ne može automatski produljiti.',
+                    ]);
+            }
+
+            $partnerService->update([
+                'expires_on' => $newExpiry->toDateString(),
+                'renewal_date' => now()->toDateString(),
+                'resolved' => false,
+                'is_active' => true,
+                'status' => 'active',
+            ]);
+
+            ActivityLogger::log(
+                subject: $partnerService,
+                event: 'renewed',
+                entityType: 'service',
+                title: $partnerService->name,
+                message: 'Produljena usluga "' . $partnerService->name . '" s datuma ' . ($oldExpiry ?: '-') . ' na ' . $newExpiry->format('Y-m-d') . '.',
+                oldValues: [
+                    'expires_on' => $oldExpiry,
+                ],
+                newValues: [
+                    'expires_on' => $newExpiry->format('Y-m-d'),
+                    'renewal_date' => now()->toDateString(),
+                ]
+            );
+
+            return redirect()
+                ->route('partner-services.index')
+                ->with('success', 'Usluga je produljena.');
+        }
+
         $data = $request->validate([
             'partner_id' => 'required|exists:partners,id',
             'service_type' => 'required|string|max:50',
@@ -124,20 +189,87 @@ class PartnerServiceController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $before = $partnerService->fresh()->toArray();
+
         $data['auto_renew'] = $request->boolean('auto_renew');
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['status'] = $data['is_active'] ? 'active' : 'inactive';
 
-        $partnerService = PartnerService::findOrFail($id);
+        if (!$data['is_active']) {
+            $data['resolved'] = true;
+        } elseif ($partnerService->resolved) {
+            $data['resolved'] = false;
+        }
+
         $partnerService->update($data);
 
-        return redirect()->route('partner-services.show', $partnerService);
+        $after = $partnerService->fresh()->toArray();
+
+        [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
+            'partner_id',
+            'name',
+            'service_type',
+            'provider',
+            'registrar',
+            'status',
+            'renewal_period',
+            'auto_renew',
+            'starts_on',
+            'expires_on',
+            'renewal_date',
+            'renewal_method',
+            'is_active',
+            'resolved',
+        ]);
+
+        if (!empty($newValues)) {
+            $message = 'Ažurirana usluga "' . $partnerService->name . '".';
+
+            if (array_key_exists('is_active', $newValues)) {
+                $message = $partnerService->is_active
+                    ? 'Aktivirana usluga "' . $partnerService->name . '".'
+                    : 'Deaktivirana usluga "' . $partnerService->name . '".';
+            }
+
+            ActivityLogger::log(
+                subject: $partnerService,
+                event: 'updated',
+                entityType: 'service',
+                title: $partnerService->name,
+                message: $message,
+                oldValues: $oldValues,
+                newValues: $newValues
+            );
+        }
+
+        return redirect()
+            ->route('partner-services.index')
+            ->with('success', 'Usluga je ažurirana.');
     }
 
     public function destroy(string $id)
     {
         $partnerService = PartnerService::findOrFail($id);
+
+        ActivityLogger::log(
+            subject: $partnerService,
+            event: 'deleted',
+            entityType: 'service',
+            title: $partnerService->name,
+            message: 'Obrisana usluga "' . $partnerService->name . '".',
+            oldValues: [
+                'partner_id' => $partnerService->partner_id,
+                'name' => $partnerService->name,
+                'service_type' => $partnerService->service_type,
+                'expires_on' => optional($partnerService->expires_on)->toDateString(),
+                'is_active' => $partnerService->is_active,
+            ]
+        );
+
         $partnerService->delete();
 
-        return redirect()->route('partner-services.index');
+        return redirect()
+            ->route('partner-services.index')
+            ->with('success', 'Usluga je obrisana.');
     }
 }

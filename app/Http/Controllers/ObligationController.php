@@ -6,6 +6,7 @@ use App\Models\Obligation;
 use App\Models\Partner;
 use App\Models\PartnerContact;
 use App\Models\PartnerService;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -20,11 +21,13 @@ class ObligationController extends Controller
                 $sub->where('title', 'like', "%{$q}%")
                     ->orWhere('description', 'like', "%{$q}%")
                     ->orWhere('status', 'like', "%{$q}%")
-                    ->orWhere('priority', 'like', "%{$q}%");
-            })->orWhereHas('partner', function ($sub) use ($q) {
-                $sub->where('name', 'like', "%{$q}%");
-            })->orWhereHas('partnerService', function ($sub) use ($q) {
-                $sub->where('name', 'like', "%{$q}%");
+                    ->orWhere('priority', 'like', "%{$q}%")
+                    ->orWhereHas('partner', function ($sub) use ($q) {
+                        $sub->where('name', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('partnerService', function ($sub) use ($q) {
+                        $sub->where('name', 'like', "%{$q}%");
+                    });
             });
         }
 
@@ -129,21 +132,37 @@ class ObligationController extends Controller
             $data['recurrence_type'] = null;
         }
 
-        if ($request->filled('remind_days_before')) {
-            $data['remind_days_before'] = (int) $request->input('remind_days_before');
-        } else {
-            $data['remind_days_before'] = null;
-        }
+        $data['remind_days_before'] = $request->filled('remind_days_before')
+            ? (int) $request->input('remind_days_before')
+            : 0;
 
-        if ($data['status'] === 'done') {
-            $data['completed_date'] = now()->toDateString();
-        } else {
-            $data['completed_date'] = null;
-        }
+        $data['completed_date'] = $data['status'] === 'done'
+            ? now()->toDateString()
+            : null;
 
-        Obligation::create($data);
+        $obligation = Obligation::create($data);
 
-        return redirect()->route('obligations.index');
+        ActivityLogger::log(
+            subject: $obligation,
+            event: 'created',
+            entityType: 'obligation',
+            title: $obligation->title,
+            message: 'Dodana obveza "' . $obligation->title . '".',
+            newValues: [
+                'partner_id' => $obligation->partner_id,
+                'partner_service_id' => $obligation->partner_service_id,
+                'title' => $obligation->title,
+                'status' => $obligation->status,
+                'priority' => $obligation->priority,
+                'due_date' => optional($obligation->due_date)->toDateString(),
+                'is_recurring' => $obligation->is_recurring,
+                'recurrence_type' => $obligation->recurrence_type,
+            ]
+        );
+
+        return redirect()
+            ->route('obligations.index')
+            ->with('success', 'Obveza je uspješno spremljena.');
     }
 
     public function show(string $id)
@@ -167,6 +186,8 @@ class ObligationController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $obligation = Obligation::findOrFail($id);
+
         $data = $request->validate([
             'partner_id' => ['required', 'exists:partners,id'],
             'partner_service_id' => ['nullable', 'exists:partner_services,id'],
@@ -209,17 +230,17 @@ class ObligationController extends Controller
             }
         }
 
+        $before = $obligation->fresh()->toArray();
+
         $data['is_recurring'] = $request->boolean('is_recurring');
 
         if (!$data['is_recurring']) {
             $data['recurrence_type'] = null;
         }
 
-        if ($request->filled('remind_days_before')) {
-            $data['remind_days_before'] = (int) $request->input('remind_days_before');
-        } else {
-            $data['remind_days_before'] = null;
-        }
+        $data['remind_days_before'] = $request->filled('remind_days_before')
+            ? (int) $request->input('remind_days_before')
+            : 0;
 
         if ($data['status'] === 'done') {
             $data['completed_date'] = now()->toDateString();
@@ -227,28 +248,92 @@ class ObligationController extends Controller
             $data['completed_date'] = null;
         }
 
-        $obligation = Obligation::findOrFail($id);
         $obligation->update($data);
 
-        return redirect()->route('obligations.index');
+        $after = $obligation->fresh()->toArray();
+
+        [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
+            'partner_id',
+            'partner_service_id',
+            'partner_contact_id',
+            'title',
+            'status',
+            'priority',
+            'due_date',
+            'is_recurring',
+            'recurrence_type',
+            'completed_date',
+        ]);
+
+        if (!empty($newValues)) {
+            ActivityLogger::log(
+                subject: $obligation,
+                event: 'updated',
+                entityType: 'obligation',
+                title: $obligation->title,
+                message: 'Ažurirana obveza "' . $obligation->title . '".',
+                oldValues: $oldValues,
+                newValues: $newValues
+            );
+        }
+
+        return redirect()
+            ->route('obligations.index')
+            ->with('success', 'Obveza je uspješno ažurirana.');
     }
 
     public function destroy(string $id)
     {
-        Obligation::findOrFail($id)->delete();
+        $obligation = Obligation::findOrFail($id);
 
-        return redirect()->route('obligations.index');
+        ActivityLogger::log(
+            subject: $obligation,
+            event: 'deleted',
+            entityType: 'obligation',
+            title: $obligation->title,
+            message: 'Obrisana obveza "' . $obligation->title . '".',
+            oldValues: [
+                'partner_id' => $obligation->partner_id,
+                'partner_service_id' => $obligation->partner_service_id,
+                'title' => $obligation->title,
+                'status' => $obligation->status,
+                'due_date' => optional($obligation->due_date)->toDateString(),
+            ]
+        );
+
+        $obligation->delete();
+
+        return redirect()
+            ->route('obligations.index')
+            ->with('success', 'Obveza je obrisana.');
     }
 
     public function complete(string $id)
     {
         $obligation = Obligation::findOrFail($id);
+        $before = $obligation->toArray();
 
         $obligation->update([
             'status' => 'done',
             'completed_date' => now(),
         ]);
 
-        return back();
+        ActivityLogger::log(
+            subject: $obligation,
+            event: 'completed',
+            entityType: 'obligation',
+            title: $obligation->title,
+            message: 'Dovršena obveza "' . $obligation->title . '".',
+            oldValues: [
+                'status' => $before['status'] ?? null,
+                'completed_date' => $before['completed_date'] ?? null,
+            ],
+            newValues: [
+                'status' => 'done',
+                'completed_date' => now()->toDateString(),
+            ]
+        );
+
+        return back()->with('success', 'Obveza je označena kao završena.');
     }
 }

@@ -16,8 +16,6 @@ class ProcurementItem extends Model
         'quantity',
         'supplier_origin',
         'supplier_name',
-        'purchase_currency',
-        'sale_currency',
         'purchase_net_unit',
         'sale_net_unit',
         'purchase_vat_rate',
@@ -39,22 +37,10 @@ class ProcurementItem extends Model
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
-
     public function procurement(): BelongsTo
     {
         return $this->belongsTo(Procurement::class);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Calculations (core logika)
-    |--------------------------------------------------------------------------
-    */
 
     public function getPurchaseNetTotalAttribute(): float
     {
