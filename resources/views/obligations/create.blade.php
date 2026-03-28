@@ -4,23 +4,34 @@
 
 @section('content')
 
-<div class="max-w-5xl">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-lg font-semibold">Dodaj obvezu</h2>
+<div class="max-w-5xl space-y-6">
+
+    <div class="flex justify-between items-center">
+        <div>
+            <h2 class="text-lg font-semibold">Nova obveza</h2>
+            <div class="text-sm app-muted mt-1">
+                Operativni zadatak ili podsjetnik
+            </div>
+        </div>
 
         <a href="{{ route('obligations.index') }}" class="app-button-secondary">
             Natrag
         </a>
     </div>
 
-    <div class="app-card p-6">
-        <form action="{{ route('obligations.store') }}" method="POST">
-            @csrf
+    <form action="{{ route('obligations.store') }}" method="POST" class="space-y-6">
+        @csrf
+
+        {{-- OSNOVNI PODACI --}}
+        <div class="app-card p-6 space-y-4">
+            <div class="text-sm font-semibold">Osnovni podaci</div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {{-- PARTNER --}}
                 <div class="app-form-group">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="app-label mb-0" for="partner_id">Partner *</label>
+                        <label class="app-label mb-0">Partner *</label>
 
                         <a
                             href="{{ route('partners.create', ['return_to' => url()->current(), 'return_partner_field' => 'partner_id']) }}"
@@ -43,9 +54,10 @@
                     </select>
                 </div>
 
+                {{-- USLUGA --}}
                 <div class="app-form-group">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="app-label mb-0" for="partner_service_id">Usluga</label>
+                        <label class="app-label mb-0">Usluga</label>
 
                         <a
                             href="{{ route('partner-services.create', [
@@ -75,9 +87,10 @@
                     </select>
                 </div>
 
+                {{-- KONTAKT --}}
                 <div class="app-form-group md:col-span-2">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="app-label mb-0" for="partner_contact_id">Kontakt</label>
+                        <label class="app-label mb-0">Kontakt</label>
 
                         <a
                             href="{{ route('partner-contacts.create', [
@@ -107,19 +120,29 @@
                     </select>
                 </div>
 
+                {{-- NASLOV --}}
                 <div class="app-form-group md:col-span-2">
-                    <label class="app-label" for="title">Naslov *</label>
-                    <input type="text" id="title" name="title" class="app-input" value="{{ old('title') }}" required>
+                    <label class="app-label">Naslov *</label>
+                    <input type="text" name="title" class="app-input" value="{{ old('title') }}" required>
                 </div>
 
+                {{-- OPIS --}}
                 <div class="app-form-group md:col-span-2">
-                    <label class="app-label" for="description">Opis</label>
-                    <textarea id="description" name="description" rows="4" class="app-textarea">{{ old('description') }}</textarea>
+                    <label class="app-label">Opis</label>
+                    <textarea name="description" rows="4" class="app-textarea">{{ old('description') }}</textarea>
                 </div>
+            </div>
+        </div>
+
+        {{-- STATUS I ROK --}}
+        <div class="app-card p-6 space-y-4">
+            <div class="text-sm font-semibold">Status i rok</div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                 <div class="app-form-group">
-                    <label class="app-label" for="status">Status *</label>
-                    <select id="status" name="status" class="app-select" required>
+                    <label class="app-label">Status *</label>
+                    <select name="status" class="app-select" required>
                         <option value="open" {{ old('status', 'open') === 'open' ? 'selected' : '' }}>Open</option>
                         <option value="in_progress" {{ old('status') === 'in_progress' ? 'selected' : '' }}>U tijeku</option>
                         <option value="waiting" {{ old('status') === 'waiting' ? 'selected' : '' }}>Na čekanju</option>
@@ -128,8 +151,8 @@
                 </div>
 
                 <div class="app-form-group">
-                    <label class="app-label" for="priority">Prioritet *</label>
-                    <select id="priority" name="priority" class="app-select" required>
+                    <label class="app-label">Prioritet *</label>
+                    <select name="priority" class="app-select" required>
                         <option value="low" {{ old('priority') === 'low' ? 'selected' : '' }}>Nizak</option>
                         <option value="normal" {{ old('priority', 'normal') === 'normal' ? 'selected' : '' }}>Normalan</option>
                         <option value="high" {{ old('priority') === 'high' ? 'selected' : '' }}>Visok</option>
@@ -138,22 +161,29 @@
                 </div>
 
                 <div class="app-form-group">
-                    <label class="app-label" for="due_date">Rok</label>
-                    <input type="date" id="due_date" name="due_date" class="app-input" value="{{ old('due_date') }}">
+                    <label class="app-label">Rok</label>
+                    <input type="date" name="due_date" class="app-input" value="{{ old('due_date') }}">
                 </div>
 
-                <div class="app-form-group flex items-end">
-                    <label class="inline-flex items-center gap-2">
-                        <input type="checkbox" id="is_recurring" name="is_recurring" value="1" {{ old('is_recurring') ? 'checked' : '' }}>
-                        <span>Ponavljajuća obveza</span>
-                    </label>
-                </div>
+            </div>
+        </div>
+
+        {{-- RECURRING --}}
+        <div class="app-card p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="text-sm font-semibold">Ponavljanje</div>
+
+                <label class="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="is_recurring" name="is_recurring" value="1" {{ old('is_recurring') ? 'checked' : '' }}>
+                    Ponavljajuća obveza
+                </label>
             </div>
 
-            <div id="recurringFields" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4" style="{{ old('is_recurring') ? '' : 'display:none;' }}">
+            <div id="recurringFields" class="grid grid-cols-1 md:grid-cols-2 gap-4 {{ old('is_recurring') ? '' : 'hidden' }}">
+
                 <div class="app-form-group">
-                    <label class="app-label" for="recurrence_type">Ponavljanje</label>
-                    <select id="recurrence_type" name="recurrence_type" class="app-select">
+                    <label class="app-label">Ponavljanje</label>
+                    <select name="recurrence_type" class="app-select">
                         <option value="">-- odaberi --</option>
                         <option value="daily" {{ old('recurrence_type') === 'daily' ? 'selected' : '' }}>Dnevno</option>
                         <option value="weekly" {{ old('recurrence_type') === 'weekly' ? 'selected' : '' }}>Tjedno</option>
@@ -163,137 +193,99 @@
                 </div>
 
                 <div class="app-form-group">
-                    <label class="app-label" for="remind_days_before">Podsjetnik prije roka</label>
-                    <select id="remind_days_before" name="remind_days_before" class="app-select">
+                    <label class="app-label">Podsjetnik</label>
+                    <select name="remind_days_before" class="app-select">
                         <option value="">-- bez podsjetnika --</option>
-                        <option value="0" {{ old('remind_days_before') === '0' ? 'selected' : '' }}>Na dan roka</option>
-                        <option value="1" {{ old('remind_days_before') === '1' ? 'selected' : '' }}>1 dan prije</option>
-                        <option value="3" {{ old('remind_days_before') === '3' ? 'selected' : '' }}>3 dana prije</option>
-                        <option value="7" {{ old('remind_days_before') === '7' ? 'selected' : '' }}>7 dana prije</option>
-                        <option value="14" {{ old('remind_days_before') === '14' ? 'selected' : '' }}>14 dana prije</option>
-                        <option value="30" {{ old('remind_days_before') === '30' ? 'selected' : '' }}>30 dana prije</option>
+                        <option value="0" {{ old('remind_days_before') === '0' ? 'selected' : '' }}>Na dan</option>
+                        <option value="1" {{ old('remind_days_before') === '1' ? 'selected' : '' }}>1 dan</option>
+                        <option value="3" {{ old('remind_days_before') === '3' ? 'selected' : '' }}>3 dana</option>
+                        <option value="7" {{ old('remind_days_before') === '7' ? 'selected' : '' }}>7 dana</option>
+                        <option value="14" {{ old('remind_days_before') === '14' ? 'selected' : '' }}>14 dana</option>
                     </select>
                 </div>
-            </div>
 
-            @if ($errors->any())
-    <div class="mt-4 app-card p-4 border border-red-500/30 bg-red-500/10">
-        <div class="font-medium mb-2">Greška pri unosu:</div>
-        <ul class="text-sm space-y-1">
-            @foreach ($errors->all() as $error)
-                <li>— {{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
-
-            <div class="mt-6 flex gap-3">
-                <button type="submit" class="app-button">Spremi</button>
-                <a href="{{ route('obligations.index') }}" class="app-button-secondary">Odustani</a>
             </div>
-        </form>
-    </div>
+        </div>
+
+        {{-- ERRORS --}}
+        @if ($errors->any())
+            <div class="app-card p-4 border border-red-500/30 bg-red-500/10">
+                <div class="font-medium mb-2">Greška:</div>
+                <ul class="text-sm space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li>— {{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        {{-- ACTIONS --}}
+        <div class="flex justify-between items-center">
+            <a href="{{ route('obligations.index') }}" class="app-link text-sm">
+                Odustani
+            </a>
+
+            <button type="submit" class="app-button">
+                Spremi obvezu
+            </button>
+        </div>
+
+    </form>
+
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
     const recurringCheckbox = document.getElementById('is_recurring');
     const recurringFields = document.getElementById('recurringFields');
+
     const partnerSelect = document.getElementById('partner_id');
     const serviceSelect = document.getElementById('partner_service_id');
     const contactSelect = document.getElementById('partner_contact_id');
+
     const addServiceLink = document.getElementById('add-service-link');
     const addContactLink = document.getElementById('add-contact-link');
 
-    function toggleRecurringFields() {
-        recurringFields.style.display = recurringCheckbox.checked ? '' : 'none';
+    function toggleRecurring() {
+        recurringFields.classList.toggle('hidden', !recurringCheckbox.checked);
     }
 
-    function updateServiceOptions() {
-        const selectedPartnerId = partnerSelect.value;
+    function filterOptions(select) {
+        const partnerId = partnerSelect.value;
 
-        Array.from(serviceSelect.options).forEach(option => {
-            if (option.value === '') {
-                option.hidden = false;
-                return;
-            }
-
-            option.hidden = selectedPartnerId
-                ? option.dataset.partnerId !== selectedPartnerId
-                : false;
+        Array.from(select.options).forEach(opt => {
+            if (!opt.value) return;
+            opt.hidden = partnerId ? opt.dataset.partnerId !== partnerId : false;
         });
 
-        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
-        if (selectedOption && selectedOption.hidden) {
-            serviceSelect.value = '';
+        const selected = select.options[select.selectedIndex];
+        if (selected && selected.hidden) {
+            select.value = '';
         }
     }
 
-    function updateContactOptions() {
-        const selectedPartnerId = partnerSelect.value;
+    function updateLinks() {
+        const partnerId = partnerSelect.value;
 
-        Array.from(contactSelect.options).forEach(option => {
-            if (option.value === '') {
-                option.hidden = false;
-                return;
-            }
-
-            option.hidden = selectedPartnerId
-                ? option.dataset.partnerId !== selectedPartnerId
-                : false;
-        });
-
-        const selectedOption = contactSelect.options[contactSelect.selectedIndex];
-        if (selectedOption && selectedOption.hidden) {
-            contactSelect.value = '';
+        if (partnerId) {
+            addServiceLink.href = "{{ route('partner-services.create') }}" + '?partner_id=' + partnerId;
+            addContactLink.href = "{{ route('partner-contacts.create') }}" + '?partner_id=' + partnerId;
         }
     }
 
-    function updateAddServiceLink() {
-        const baseUrl = "{{ route('partner-services.create') }}";
-        const selectedPartnerId = partnerSelect.value;
-        const params = new URLSearchParams({
-            return_to: window.location.pathname,
-            return_partner_field: 'partner_id',
-            return_service_field: 'partner_service_id'
-        });
+    recurringCheckbox.addEventListener('change', toggleRecurring);
 
-        if (selectedPartnerId) {
-            params.set('partner_id', selectedPartnerId);
-        }
-
-        addServiceLink.href = `${baseUrl}?${params.toString()}`;
-    }
-
-    function updateAddContactLink() {
-        const baseUrl = "{{ route('partner-contacts.create') }}";
-        const selectedPartnerId = partnerSelect.value;
-        const params = new URLSearchParams({
-            return_to: window.location.pathname,
-            return_partner_field: 'partner_id',
-            return_contact_field: 'partner_contact_id'
-        });
-
-        if (selectedPartnerId) {
-            params.set('partner_id', selectedPartnerId);
-        }
-
-        addContactLink.href = `${baseUrl}?${params.toString()}`;
-    }
-
-    recurringCheckbox.addEventListener('change', toggleRecurringFields);
-    partnerSelect.addEventListener('change', function () {
-        updateServiceOptions();
-        updateContactOptions();
-        updateAddServiceLink();
-        updateAddContactLink();
+    partnerSelect.addEventListener('change', () => {
+        filterOptions(serviceSelect);
+        filterOptions(contactSelect);
+        updateLinks();
     });
 
-    toggleRecurringFields();
-    updateServiceOptions();
-    updateContactOptions();
-    updateAddServiceLink();
-    updateAddContactLink();
+    toggleRecurring();
+    filterOptions(serviceSelect);
+    filterOptions(contactSelect);
+    updateLinks();
 });
 </script>
 
