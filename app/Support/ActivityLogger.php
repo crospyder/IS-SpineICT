@@ -1,131 +1,184 @@
-<?php
+@extends('layouts.app')
 
-namespace App\Support;
+@section('title', 'Dashboard')
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+@section('content')
 
-class ActivityLogger
-{
-    protected static ?array $columns = null;
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
-    public static function log(
-        Model $subject,
-        string $event,
-        string $message,
-        ?string $entityType = null,
-        ?string $title = null,
-        array $oldValues = [],
-        array $newValues = []
-    ): void {
-        if (!Schema::hasTable('activity_logs')) {
-            return;
-        }
+    <div class="app-card p-5">
+        <div class="text-sm app-muted mb-2">Partneri</div>
+        <div class="text-3xl font-semibold">{{ $partnersCount }}</div>
+        <div class="mt-2 text-sm app-muted">
+            Aktivni: {{ $activePartnersCount }}
+        </div>
+    </div>
 
-        $columns = self::columns();
+    <div class="app-card p-5">
+        <div class="text-sm app-muted mb-2">Usluge</div>
+        <div class="text-3xl font-semibold">{{ $servicesCount }}</div>
+        <div class="mt-2 text-sm app-muted">
+            Aktivne i arhivirane evidencije usluga
+        </div>
+    </div>
 
-        if (empty($columns)) {
-            return;
-        }
+    <div class="app-card p-5">
+        <div class="text-sm app-muted mb-2">Aktivne obveze</div>
+        <div class="text-3xl font-semibold">{{ $activeObligationsCount }}</div>
+        <div class="mt-2 text-sm app-muted">
+            Obveze bez completed datuma
+        </div>
+    </div>
 
-        $payload = [];
+    <div class="app-card p-5">
+        <div class="text-sm app-muted mb-2">Upozorenja</div>
+        <div class="text-3xl font-semibold">{{ $alertsCount }}</div>
+        <div class="mt-2 text-sm flex flex-wrap gap-2">
+            @if($alertsCount > 0)
+                <span class="app-badge badge-overdue">Kasni / isteklo: {{ $alertsCount }}</span>
+            @else
+                <span class="app-badge badge-ok">Nema upozorenja</span>
+            @endif
+        </div>
+    </div>
 
-        if (in_array('user_id', $columns, true)) {
-            $payload['user_id'] = Auth::id();
-        }
+</div>
 
-        if (in_array('subject_type', $columns, true)) {
-            $payload['subject_type'] = $subject::class;
-        }
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
 
-        if (in_array('subject_id', $columns, true)) {
-            $payload['subject_id'] = $subject->getKey();
-        }
+    <div class="app-card p-5 xl:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Kasni / isteklo</h2>
+            <div class="text-sm app-muted">Problemi koji traže pažnju</div>
+        </div>
 
-        if (in_array('event', $columns, true)) {
-            $payload['event'] = $event;
-        }
+        @if($alertsList->count())
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Tip</th>
+                        <th>Partner</th>
+                        <th>Naslov</th>
+                        <th>Datum</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($alertsList as $entry)
+                        <tr class="app-row">
+                            <td>{{ $entry->kind_label }}</td>
+                            <td>{{ $entry->partner_name }}</td>
+                            <td>
+                                <a href="{{ $entry->url }}" class="app-link">
+                                    {{ $entry->title }}
+                                </a>
+                            </td>
+                            <td>{{ $entry->date ? $entry->date->format('d.m.Y') : '-' }}</td>
+                            <td>
+                                <span class="app-badge {{ $entry->status_class }}">
+                                    {{ $entry->status_label }}
+                                </span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="app-muted">Nema kašnjenja ni isteklih usluga.</div>
+        @endif
+    </div>
 
-        if (in_array('entity_type', $columns, true)) {
-            $payload['entity_type'] = $entityType;
-        }
+    <div class="app-card p-5">
+        <h2 class="text-lg font-semibold mb-4">Brze akcije</h2>
 
-        if (in_array('title', $columns, true)) {
-            $payload['title'] = $title;
-        }
+        <div class="flex flex-col gap-3">
+            <a href="{{ route('partners.create') }}" class="app-button">Dodaj partnera</a>
+            <a href="{{ route('partner-services.create') }}" class="app-button-secondary">Dodaj uslugu</a>
+            <a href="{{ route('obligations.create') }}" class="app-button-secondary">Dodaj obvezu</a>
+            <a href="{{ route('obligations.index') }}" class="app-button-secondary">Otvori obveze</a>
+        </div>
+    </div>
 
-        if (in_array('message', $columns, true)) {
-            $payload['message'] = $message;
-        }
+</div>
 
-        if (in_array('old_values', $columns, true)) {
-            $payload['old_values'] = empty($oldValues) ? null : json_encode($oldValues, JSON_UNESCAPED_UNICODE);
-        }
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
 
-        if (in_array('new_values', $columns, true)) {
-            $payload['new_values'] = empty($newValues) ? null : json_encode($newValues, JSON_UNESCAPED_UNICODE);
-        }
+    <div class="app-card p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Slijedi po redu</h2>
+            <div class="text-sm app-muted">Sljedeće obveze i isteci</div>
+        </div>
 
-        if (in_array('created_at', $columns, true)) {
-            $payload['created_at'] = now();
-        }
+        @if($nextItems->count())
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Tip</th>
+                        <th>Partner</th>
+                        <th>Naslov</th>
+                        <th>Datum</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($nextItems as $entry)
+                        <tr class="app-row">
+                            <td>{{ $entry->kind_label }}</td>
+                            <td>{{ $entry->partner_name }}</td>
+                            <td>
+                                <a href="{{ $entry->url }}" class="app-link">
+                                    {{ $entry->title }}
+                                </a>
+                            </td>
+                            <td>{{ $entry->date ? $entry->date->format('d.m.Y') : '-' }}</td>
+                            <td>
+                                <span class="app-badge {{ $entry->status_class }}">
+                                    {{ $entry->status_label }}
+                                </span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="app-muted">Nema nadolazećih obveza ni usluga s datumom.</div>
+        @endif
+    </div>
 
-        if (in_array('updated_at', $columns, true)) {
-            $payload['updated_at'] = now();
-        }
+    <div class="app-card p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Zadnje aktivnosti</h2>
+        </div>
 
-        if (empty($payload)) {
-            return;
-        }
+        @if($recentActivities->count())
+            <div class="space-y-3">
+                @foreach($recentActivities as $activity)
+                    <div class="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-medium">
+                                    {{ $activity->entity_label }}
+                                </div>
+                                <div class="text-sm mt-1">
+                                    {{ $activity->message }}
+                                </div>
+                                <div class="text-xs app-muted mt-1">
+                                    {{ $activity->user->name ?? 'Sustav' }}
+                                </div>
+                            </div>
 
-        DB::table('activity_logs')->insert($payload);
-    }
+                            <div class="text-xs app-muted whitespace-nowrap">
+                                {{ $activity->created_at->diffForHumans() }}
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="app-muted">Još nema aktivnosti.</div>
+        @endif
+    </div>
 
-    public static function diff(array $old, array $new, array $fields): array
-    {
-        $oldValues = [];
-        $newValues = [];
+</div>
 
-        foreach ($fields as $field) {
-            $oldValue = $old[$field] ?? null;
-            $newValue = $new[$field] ?? null;
-
-            if (self::normalize($oldValue) !== self::normalize($newValue)) {
-                $oldValues[$field] = $oldValue;
-                $newValues[$field] = $newValue;
-            }
-        }
-
-        return [$oldValues, $newValues];
-    }
-
-    protected static function normalize(mixed $value): string
-    {
-        if ($value instanceof \DateTimeInterface) {
-            return $value->format('Y-m-d H:i:s');
-        }
-
-        if (is_array($value)) {
-            return json_encode($value, JSON_UNESCAPED_UNICODE);
-        }
-
-        if (is_bool($value)) {
-            return $value ? '1' : '0';
-        }
-
-        return (string) $value;
-    }
-
-    protected static function columns(): array
-    {
-        if (self::$columns !== null) {
-            return self::$columns;
-        }
-
-        self::$columns = Schema::getColumnListing('activity_logs');
-
-        return self::$columns;
-    }
-}
+@endsection

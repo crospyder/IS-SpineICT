@@ -95,14 +95,20 @@ class PartnerServiceController extends Controller
             event: 'created',
             entityType: 'service',
             title: $service->name,
-            message: 'Dodana usluga "' . $service->name . '" za partnera "' . ($service->partner->name ?? '-') . '".',
             newValues: [
                 'partner_id' => $service->partner_id,
                 'name' => $service->name,
                 'service_type' => $service->service_type,
-                'expires_on' => optional($service->expires_on)->toDateString(),
+                'provider' => $service->provider,
+                'registrar' => $service->registrar,
+                'status' => $service->status,
                 'renewal_period' => $service->renewal_period,
+                'auto_renew' => $service->auto_renew,
+                'starts_on' => optional($service->starts_on)->toDateString(),
+                'expires_on' => optional($service->expires_on)->toDateString(),
+                'renewal_date' => optional($service->renewal_date)->toDateString(),
                 'is_active' => $service->is_active,
+                'resolved' => $service->resolved,
             ]
         );
 
@@ -155,13 +161,15 @@ class PartnerServiceController extends Controller
                 event: 'renewed',
                 entityType: 'service',
                 title: $partnerService->name,
-                message: 'Produljena usluga "' . $partnerService->name . '" s datuma ' . ($oldExpiry ?: '-') . ' na ' . $newExpiry->format('Y-m-d') . '.',
                 oldValues: [
                     'expires_on' => $oldExpiry,
                 ],
                 newValues: [
                     'expires_on' => $newExpiry->format('Y-m-d'),
                     'renewal_date' => now()->toDateString(),
+                    'status' => 'active',
+                    'is_active' => true,
+                    'resolved' => false,
                 ]
             );
 
@@ -223,20 +231,17 @@ class PartnerServiceController extends Controller
         ]);
 
         if (!empty($newValues)) {
-            $message = 'Ažurirana usluga "' . $partnerService->name . '".';
+            $event = 'updated';
 
             if (array_key_exists('is_active', $newValues)) {
-                $message = $partnerService->is_active
-                    ? 'Aktivirana usluga "' . $partnerService->name . '".'
-                    : 'Deaktivirana usluga "' . $partnerService->name . '".';
+                $event = $partnerService->is_active ? 'activated' : 'deactivated';
             }
 
             ActivityLogger::log(
                 subject: $partnerService,
-                event: 'updated',
+                event: $event,
                 entityType: 'service',
                 title: $partnerService->name,
-                message: $message,
                 oldValues: $oldValues,
                 newValues: $newValues
             );
@@ -256,13 +261,16 @@ class PartnerServiceController extends Controller
             event: 'deleted',
             entityType: 'service',
             title: $partnerService->name,
-            message: 'Obrisana usluga "' . $partnerService->name . '".',
             oldValues: [
                 'partner_id' => $partnerService->partner_id,
                 'name' => $partnerService->name,
                 'service_type' => $partnerService->service_type,
+                'provider' => $partnerService->provider,
+                'registrar' => $partnerService->registrar,
+                'status' => $partnerService->status,
                 'expires_on' => optional($partnerService->expires_on)->toDateString(),
                 'is_active' => $partnerService->is_active,
+                'resolved' => $partnerService->resolved,
             ]
         );
 

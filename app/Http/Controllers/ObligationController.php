@@ -1,339 +1,212 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Support;
 
-use App\Models\Obligation;
-use App\Models\Partner;
-use App\Models\PartnerContact;
-use App\Models\PartnerService;
-use App\Support\ActivityLogger;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
-class ObligationController extends Controller
+class ActivityLogger
 {
-    public function index()
-    {
-        $query = Obligation::with(['partner', 'partnerService']);
+    protected static ?array $columns = null;
 
-        if ($q = request('q')) {
-            $query->where(function ($sub) use ($q) {
-                $sub->where('title', 'like', "%{$q}%")
-                    ->orWhere('description', 'like', "%{$q}%")
-                    ->orWhere('status', 'like', "%{$q}%")
-                    ->orWhere('priority', 'like', "%{$q}%")
-                    ->orWhereHas('partner', function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%{$q}%");
-                    })
-                    ->orWhereHas('partnerService', function ($sub) use ($q) {
-                        $sub->where('name', 'like', "%{$q}%");
-                    });
-            });
+    public static function log(
+        Model $subject,
+        string $event,
+        ?string $entityType = null,
+        ?string $title = null,
+        ?string $message = null,
+        array $oldValues = [],
+        array $newValues = []
+    ): void {
+        if (!Schema::hasTable('activity_logs')) {
+            return;
         }
 
-        if ($partnerId = request('partner_id')) {
-            $query->where('partner_id', $partnerId);
+        $columns = self::columns();
+
+        if (empty($columns)) {
+            return;
         }
 
-        if (request('status') === 'open') {
-            $query->where('status', 'open');
+        $entityType ??= self::detectEntityType($subject);
+        $displayTitle = self::resolveTitle($title, $subject, $entityType);
+        $displayMessage = $message ?: self::buildMessage($entityType, $event, $displayTitle);
+
+        $payload = [];
+
+        if (in_array('user_id', $columns, true)) {
+            $payload['user_id'] = Auth::id();
         }
 
-        if (request('status') === 'done') {
-            $query->where(function ($sub) {
-                $sub->where('status', 'done')
-                    ->orWhereNotNull('completed_date');
-            });
+        if (in_array('subject_type', $columns, true)) {
+            $payload['subject_type'] = $subject::class;
         }
 
-        if (request('due') === 'today') {
-            $query->whereNull('completed_date')
-                ->whereDate('due_date', now()->toDateString());
+        if (in_array('subject_id', $columns, true)) {
+            $payload['subject_id'] = $subject->getKey();
         }
 
-        if (request('due') === 'soon') {
-            $query->whereNull('completed_date')
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<=', now()->addDays(7))
-                ->whereDate('due_date', '>=', now());
+        if (in_array('event', $columns, true)) {
+            $payload['event'] = $event;
         }
 
-        if (request('due') === 'overdue') {
-            $query->whereNull('completed_date')
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<', now());
+        if (in_array('entity_type', $columns, true)) {
+            $payload['entity_type'] = $entityType;
         }
 
-        $obligations = $query
-            ->orderBy('due_date')
-            ->get();
+        if (in_array('title', $columns, true)) {
+            $payload['title'] = self::buildActivityTitle($entityType, $event);
+        }
 
-        $partners = Partner::orderBy('name')->get();
+        if (in_array('message', $columns, true)) {
+            $payload['message'] = $displayMessage;
+        }
 
-        return view('obligations.index', compact('obligations', 'partners'));
+        if (in_array('old_values', $columns, true)) {
+            $payload['old_values'] = empty($oldValues) ? null : json_encode($oldValues, JSON_UNESCAPED_UNICODE);
+        }
+
+        if (in_array('new_values', $columns, true)) {
+            $payload['new_values'] = empty($newValues) ? null : json_encode($newValues, JSON_UNESCAPED_UNICODE);
+        }
+
+        if (in_array('created_at', $columns, true)) {
+            $payload['created_at'] = now();
+        }
+
+        if (in_array('updated_at', $columns, true)) {
+            $payload['updated_at'] = now();
+        }
+
+        if (empty($payload)) {
+            return;
+        }
+
+        DB::table('activity_logs')->insert($payload);
     }
 
-    public function create()
+    public static function diff(array $old, array $new, array $fields): array
     {
-        return view('obligations.create', [
-            'partners' => Partner::orderBy('name')->get(),
-            'services' => PartnerService::orderBy('name')->get(),
-            'contacts' => PartnerContact::orderBy('name')->get(),
-        ]);
-    }
+        $oldValues = [];
+        $newValues = [];
 
-    public function store(Request $request)
-    {
-        $data = $request->validate([
-            'partner_id' => ['required', 'exists:partners,id'],
-            'partner_service_id' => ['nullable', 'exists:partner_services,id'],
-            'partner_contact_id' => ['nullable', 'exists:partner_contacts,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['required', Rule::in(['open', 'in_progress', 'waiting', 'done'])],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'due_date' => ['nullable', 'date'],
-            'is_recurring' => ['nullable', 'boolean'],
-            'recurrence_type' => ['nullable', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
-            'remind_days_before' => ['nullable', Rule::in([0, 1, 3, 7, 14, 30])],
-        ]);
+        foreach ($fields as $field) {
+            $oldValue = $old[$field] ?? null;
+            $newValue = $new[$field] ?? null;
 
-        if (!empty($data['partner_service_id'])) {
-            $serviceBelongsToPartner = PartnerService::where('id', $data['partner_service_id'])
-                ->where('partner_id', $data['partner_id'])
-                ->exists();
-
-            if (!$serviceBelongsToPartner) {
-                return back()
-                    ->withErrors([
-                        'partner_service_id' => 'Odabrana usluga ne pripada odabranom partneru.',
-                    ])
-                    ->withInput();
+            if (self::normalize($oldValue) !== self::normalize($newValue)) {
+                $oldValues[$field] = $oldValue;
+                $newValues[$field] = $newValue;
             }
         }
 
-        if (!empty($data['partner_contact_id'])) {
-            $contactBelongsToPartner = PartnerContact::where('id', $data['partner_contact_id'])
-                ->where('partner_id', $data['partner_id'])
-                ->exists();
+        return [$oldValues, $newValues];
+    }
 
-            if (!$contactBelongsToPartner) {
-                return back()
-                    ->withErrors([
-                        'partner_contact_id' => 'Odabrani kontakt ne pripada odabranom partneru.',
-                    ])
-                    ->withInput();
+    protected static function detectEntityType(Model $subject): string
+    {
+        return match (class_basename($subject)) {
+            'Obligation' => 'obligation',
+            'PartnerService' => 'service',
+            'Procurement' => 'procurement',
+            'Partner' => 'partner',
+            default => 'activity',
+        };
+    }
+
+    protected static function resolveTitle(?string $title, Model $subject, ?string $entityType): string
+    {
+        if ($title !== null && trim($title) !== '') {
+            return trim($title);
+        }
+
+        foreach (['title', 'name', 'reference_no'] as $attribute) {
+            $value = $subject->getAttribute($attribute);
+
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
             }
         }
 
-        $data['is_recurring'] = $request->boolean('is_recurring');
-
-        if (!$data['is_recurring']) {
-            $data['recurrence_type'] = null;
-        }
-
-        $data['remind_days_before'] = $request->filled('remind_days_before')
-            ? (int) $request->input('remind_days_before')
-            : 0;
-
-        $data['completed_date'] = $data['status'] === 'done'
-            ? now()->toDateString()
-            : null;
-
-        $obligation = Obligation::create($data);
-
-        ActivityLogger::log(
-            subject: $obligation,
-            event: 'created',
-            entityType: 'obligation',
-            title: $obligation->title,
-            message: 'Dodana obveza "' . $obligation->title . '".',
-            newValues: [
-                'partner_id' => $obligation->partner_id,
-                'partner_service_id' => $obligation->partner_service_id,
-                'title' => $obligation->title,
-                'status' => $obligation->status,
-                'priority' => $obligation->priority,
-                'due_date' => optional($obligation->due_date)->toDateString(),
-                'is_recurring' => $obligation->is_recurring,
-                'recurrence_type' => $obligation->recurrence_type,
-            ]
-        );
-
-        return redirect()
-            ->route('obligations.index')
-            ->with('success', 'Obveza je uspješno spremljena.');
+        return self::entityLabel($entityType);
     }
 
-    public function show(string $id)
+    protected static function buildActivityTitle(?string $entityType, string $event): string
     {
-        $obligation = Obligation::with(['partner', 'partnerService'])->findOrFail($id);
+        $entityLabel = self::entityLabel($entityType);
+        $eventLabel = self::eventLabel($event);
 
-        return view('obligations.show', compact('obligation'));
+        return trim($entityLabel . ' ' . $eventLabel);
     }
 
-    public function edit(string $id)
+    protected static function buildMessage(?string $entityType, string $event, string $title): string
     {
-        $obligation = Obligation::findOrFail($id);
+        $entityLabel = self::entityLabel($entityType);
 
-        return view('obligations.edit', [
-            'obligation' => $obligation,
-            'partners' => Partner::orderBy('name')->get(),
-            'services' => PartnerService::orderBy('name')->get(),
-            'contacts' => PartnerContact::orderBy('name')->get(),
-        ]);
+        return match ($event) {
+            'created' => $entityLabel . ' "' . $title . '" je kreiran.',
+            'updated' => $entityLabel . ' "' . $title . '" je ažuriran.',
+            'deleted' => $entityLabel . ' "' . $title . '" je obrisan.',
+            'completed' => $entityLabel . ' "' . $title . '" je dovršen.',
+            'renewed' => $entityLabel . ' "' . $title . '" je produljen.',
+            'activated' => $entityLabel . ' "' . $title . '" je aktiviran.',
+            'deactivated' => $entityLabel . ' "' . $title . '" je deaktiviran.',
+            default => $entityLabel . ' "' . $title . '" je promijenjen.',
+        };
     }
 
-    public function update(Request $request, string $id)
+    protected static function entityLabel(?string $entityType): string
     {
-        $obligation = Obligation::findOrFail($id);
-
-        $data = $request->validate([
-            'partner_id' => ['required', 'exists:partners,id'],
-            'partner_service_id' => ['nullable', 'exists:partner_services,id'],
-            'partner_contact_id' => ['nullable', 'exists:partner_contacts,id'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['required', Rule::in(['open', 'in_progress', 'waiting', 'done'])],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'due_date' => ['nullable', 'date'],
-            'is_recurring' => ['nullable', 'boolean'],
-            'recurrence_type' => ['nullable', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
-            'remind_days_before' => ['nullable', Rule::in([0, 1, 3, 7, 14, 30])],
-        ]);
-
-        if (!empty($data['partner_service_id'])) {
-            $serviceBelongsToPartner = PartnerService::where('id', $data['partner_service_id'])
-                ->where('partner_id', $data['partner_id'])
-                ->exists();
-
-            if (!$serviceBelongsToPartner) {
-                return back()
-                    ->withErrors([
-                        'partner_service_id' => 'Odabrana usluga ne pripada odabranom partneru.',
-                    ])
-                    ->withInput();
-            }
-        }
-
-        if (!empty($data['partner_contact_id'])) {
-            $contactBelongsToPartner = PartnerContact::where('id', $data['partner_contact_id'])
-                ->where('partner_id', $data['partner_id'])
-                ->exists();
-
-            if (!$contactBelongsToPartner) {
-                return back()
-                    ->withErrors([
-                        'partner_contact_id' => 'Odabrani kontakt ne pripada odabranom partneru.',
-                    ])
-                    ->withInput();
-            }
-        }
-
-        $before = $obligation->fresh()->toArray();
-
-        $data['is_recurring'] = $request->boolean('is_recurring');
-
-        if (!$data['is_recurring']) {
-            $data['recurrence_type'] = null;
-        }
-
-        $data['remind_days_before'] = $request->filled('remind_days_before')
-            ? (int) $request->input('remind_days_before')
-            : 0;
-
-        if ($data['status'] === 'done') {
-            $data['completed_date'] = now()->toDateString();
-        } else {
-            $data['completed_date'] = null;
-        }
-
-        $obligation->update($data);
-
-        $after = $obligation->fresh()->toArray();
-
-        [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
-            'partner_id',
-            'partner_service_id',
-            'partner_contact_id',
-            'title',
-            'status',
-            'priority',
-            'due_date',
-            'is_recurring',
-            'recurrence_type',
-            'completed_date',
-        ]);
-
-        if (!empty($newValues)) {
-            ActivityLogger::log(
-                subject: $obligation,
-                event: 'updated',
-                entityType: 'obligation',
-                title: $obligation->title,
-                message: 'Ažurirana obveza "' . $obligation->title . '".',
-                oldValues: $oldValues,
-                newValues: $newValues
-            );
-        }
-
-        return redirect()
-            ->route('obligations.index')
-            ->with('success', 'Obveza je uspješno ažurirana.');
+        return match ($entityType) {
+            'service' => 'Usluga',
+            'obligation' => 'Obveza',
+            'procurement' => 'Kalkulacija',
+            'partner' => 'Partner',
+            default => 'Aktivnost',
+        };
     }
 
-    public function destroy(string $id)
+    protected static function eventLabel(string $event): string
     {
-        $obligation = Obligation::findOrFail($id);
-
-        ActivityLogger::log(
-            subject: $obligation,
-            event: 'deleted',
-            entityType: 'obligation',
-            title: $obligation->title,
-            message: 'Obrisana obveza "' . $obligation->title . '".',
-            oldValues: [
-                'partner_id' => $obligation->partner_id,
-                'partner_service_id' => $obligation->partner_service_id,
-                'title' => $obligation->title,
-                'status' => $obligation->status,
-                'due_date' => optional($obligation->due_date)->toDateString(),
-            ]
-        );
-
-        $obligation->delete();
-
-        return redirect()
-            ->route('obligations.index')
-            ->with('success', 'Obveza je obrisana.');
+        return match ($event) {
+            'created' => 'kreirana',
+            'updated' => 'ažurirana',
+            'deleted' => 'obrisana',
+            'completed' => 'dovršena',
+            'renewed' => 'produljena',
+            'activated' => 'aktivirana',
+            'deactivated' => 'deaktivirana',
+            default => 'promijenjena',
+        };
     }
 
-    public function complete(string $id)
+    protected static function normalize(mixed $value): string
     {
-        $obligation = Obligation::findOrFail($id);
-        $before = $obligation->toArray();
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
 
-        $obligation->update([
-            'status' => 'done',
-            'completed_date' => now(),
-        ]);
+        if (is_array($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
 
-        ActivityLogger::log(
-            subject: $obligation,
-            event: 'completed',
-            entityType: 'obligation',
-            title: $obligation->title,
-            message: 'Dovršena obveza "' . $obligation->title . '".',
-            oldValues: [
-                'status' => $before['status'] ?? null,
-                'completed_date' => $before['completed_date'] ?? null,
-            ],
-            newValues: [
-                'status' => 'done',
-                'completed_date' => now()->toDateString(),
-            ]
-        );
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
 
-        return back()->with('success', 'Obveza je označena kao završena.');
+        return (string) $value;
+    }
+
+    protected static function columns(): array
+    {
+        if (self::$columns !== null) {
+            return self::$columns;
+        }
+
+        self::$columns = Schema::getColumnListing('activity_logs');
+
+        return self::$columns;
     }
 }

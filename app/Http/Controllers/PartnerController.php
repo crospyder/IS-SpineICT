@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Partner;
+use App\Support\ActivityLogger;
 use Illuminate\Http\Request;
 
 class PartnerController extends Controller
@@ -65,6 +66,26 @@ class PartnerController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         $partner = Partner::create($data);
+
+        ActivityLogger::log(
+            subject: $partner,
+            event: 'created',
+            entityType: 'partner',
+            title: $partner->name,
+            newValues: [
+                'name' => $partner->name,
+                'legal_name' => $partner->legal_name,
+                'oib' => $partner->oib,
+                'email' => $partner->email,
+                'phone' => $partner->phone,
+                'website' => $partner->website,
+                'address' => $partner->address,
+                'city' => $partner->city,
+                'postal_code' => $partner->postal_code,
+                'country' => $partner->country,
+                'is_active' => $partner->is_active,
+            ]
+        );
 
         $returnTo = $request->input('return_to');
         $returnPartnerField = $request->input('return_partner_field', 'partner_id');
@@ -130,7 +151,43 @@ class PartnerController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         $partner = Partner::findOrFail($id);
+        $before = $partner->fresh()->toArray();
+
         $partner->update($data);
+
+        $after = $partner->fresh()->toArray();
+
+        [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
+            'name',
+            'legal_name',
+            'oib',
+            'email',
+            'phone',
+            'website',
+            'address',
+            'city',
+            'postal_code',
+            'country',
+            'notes',
+            'is_active',
+        ]);
+
+        if (!empty($newValues)) {
+            $event = 'updated';
+
+            if (array_key_exists('is_active', $newValues)) {
+                $event = $partner->is_active ? 'activated' : 'deactivated';
+            }
+
+            ActivityLogger::log(
+                subject: $partner,
+                event: $event,
+                entityType: 'partner',
+                title: $partner->name,
+                oldValues: $oldValues,
+                newValues: $newValues
+            );
+        }
 
         return redirect()->route('partners.index');
     }
@@ -138,6 +195,27 @@ class PartnerController extends Controller
     public function destroy(string $id)
     {
         $partner = Partner::findOrFail($id);
+
+        ActivityLogger::log(
+            subject: $partner,
+            event: 'deleted',
+            entityType: 'partner',
+            title: $partner->name,
+            oldValues: [
+                'name' => $partner->name,
+                'legal_name' => $partner->legal_name,
+                'oib' => $partner->oib,
+                'email' => $partner->email,
+                'phone' => $partner->phone,
+                'website' => $partner->website,
+                'address' => $partner->address,
+                'city' => $partner->city,
+                'postal_code' => $partner->postal_code,
+                'country' => $partner->country,
+                'is_active' => $partner->is_active,
+            ]
+        );
+
         $partner->delete();
 
         return redirect()->route('partners.index');

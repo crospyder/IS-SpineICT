@@ -7,6 +7,7 @@ use App\Models\Procurement;
 use Illuminate\Http\Request;
 use App\Models\ProcurementItem;
 use App\Models\ProcurementCost;
+use App\Support\ActivityLogger;
 
 class ProcurementController extends Controller
 {
@@ -81,6 +82,22 @@ class ProcurementController extends Controller
 
         $procurement = Procurement::create($data);
 
+        ActivityLogger::log(
+            subject: $procurement,
+            event: 'created',
+            entityType: 'procurement',
+            title: $procurement->title,
+            newValues: [
+                'partner_id' => $procurement->partner_id,
+                'title' => $procurement->title,
+                'reference_no' => $procurement->reference_no,
+                'status' => $procurement->status,
+                'offer_date' => optional($procurement->offer_date)->toDateString(),
+                'valid_until' => optional($procurement->valid_until)->toDateString(),
+                'vat_rate' => $procurement->vat_rate,
+            ]
+        );
+
         return redirect()
             ->route('procurements.edit', $procurement)
             ->with('success', 'Kalkulacija je kreirana.');
@@ -113,6 +130,7 @@ class ProcurementController extends Controller
     public function update(Request $request, string $id)
     {
         $item = Procurement::findOrFail($id);
+        $before = $item->fresh()->toArray();
 
         $data = $request->validate([
             'partner_id' => 'required|exists:partners,id',
@@ -127,6 +145,30 @@ class ProcurementController extends Controller
 
         $item->update($data);
 
+        $after = $item->fresh()->toArray();
+
+        [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
+            'partner_id',
+            'title',
+            'reference_no',
+            'status',
+            'offer_date',
+            'valid_until',
+            'vat_rate',
+            'notes',
+        ]);
+
+        if (!empty($newValues)) {
+            ActivityLogger::log(
+                subject: $item,
+                event: 'updated',
+                entityType: 'procurement',
+                title: $item->title,
+                oldValues: $oldValues,
+                newValues: $newValues
+            );
+        }
+
         return redirect()
             ->route('procurements.edit', $item)
             ->with('success', 'Kalkulacija je ažurirana.');
@@ -135,6 +177,23 @@ class ProcurementController extends Controller
     public function destroy(string $id)
     {
         $item = Procurement::findOrFail($id);
+
+        ActivityLogger::log(
+            subject: $item,
+            event: 'deleted',
+            entityType: 'procurement',
+            title: $item->title,
+            oldValues: [
+                'partner_id' => $item->partner_id,
+                'title' => $item->title,
+                'reference_no' => $item->reference_no,
+                'status' => $item->status,
+                'offer_date' => optional($item->offer_date)->toDateString(),
+                'valid_until' => optional($item->valid_until)->toDateString(),
+                'vat_rate' => $item->vat_rate,
+            ]
+        );
+
         $item->delete();
 
         return redirect()
