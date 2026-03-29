@@ -96,12 +96,18 @@ class PartnerController extends Controller
                 'country' => $partner->country,
                 'notes' => $partner->notes,
                 'is_active' => $partner->is_active,
+
                 'is_contract_client' => $partner->is_contract_client,
                 'contract_status' => $partner->contract_status,
                 'contract_start_date' => optional($partner->contract_start_date)->format('Y-m-d'),
                 'contract_end_date' => optional($partner->contract_end_date)->format('Y-m-d'),
                 'contract_notes' => $partner->contract_notes,
                 'contract_service_ids' => $contractServiceIds,
+
+                'inventory_enabled' => $partner->inventory_enabled,
+                'inventory_mode' => $partner->inventory_mode,
+                'inventory_partner_key' => $partner->inventory_partner_key,
+                'is_internal' => $partner->is_internal,
             ]
         );
 
@@ -141,6 +147,9 @@ class PartnerController extends Controller
             },
             'contractServices' => function ($query) {
                 $query->orderBy('sort_order')->orderBy('name');
+            },
+            'inventoryItems' => function ($query) {
+                $query->orderByDesc('last_seen_at')->orderBy('hostname');
             },
         ])->findOrFail($id);
 
@@ -201,11 +210,17 @@ class PartnerController extends Controller
             'country',
             'notes',
             'is_active',
+
             'is_contract_client',
             'contract_status',
             'contract_start_date',
             'contract_end_date',
             'contract_notes',
+
+            'inventory_enabled',
+            'inventory_mode',
+            'inventory_partner_key',
+            'is_internal',
         ]);
 
         $afterContractServiceIds = $partner->contractServices
@@ -264,12 +279,18 @@ class PartnerController extends Controller
                 'country' => $partner->country,
                 'notes' => $partner->notes,
                 'is_active' => $partner->is_active,
+
                 'is_contract_client' => $partner->is_contract_client,
                 'contract_status' => $partner->contract_status,
                 'contract_start_date' => optional($partner->contract_start_date)->format('Y-m-d'),
                 'contract_end_date' => optional($partner->contract_end_date)->format('Y-m-d'),
                 'contract_notes' => $partner->contract_notes,
                 'contract_service_ids' => $partner->contractServices->pluck('id')->all(),
+
+                'inventory_enabled' => $partner->inventory_enabled,
+                'inventory_mode' => $partner->inventory_mode,
+                'inventory_partner_key' => $partner->inventory_partner_key,
+                'is_internal' => $partner->is_internal,
             ]
         );
 
@@ -417,16 +438,30 @@ class PartnerController extends Controller
             'contract_notes' => ['nullable', 'string'],
             'contract_service_ids' => ['nullable', 'array'],
             'contract_service_ids.*' => ['integer', 'exists:contract_service_types,id'],
+
+            'inventory_enabled' => ['nullable', 'boolean'],
+            'inventory_mode' => ['nullable', 'string', Rule::in(['manual', 'agent', 'hybrid'])],
+            'inventory_partner_key' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('partners', 'inventory_partner_key')->ignore($partner?->id),
+            ],
+            'is_internal' => ['nullable', 'boolean'],
         ], [
             'oib.size' => 'OIB mora imati točno 11 znamenki.',
             'oib.unique' => 'Partner s tim OIB-om već postoji.',
             'contract_end_date.after_or_equal' => 'Datum završetka ugovora mora biti isti ili nakon početka ugovora.',
+            'inventory_partner_key.unique' => 'Inventory partner key već postoji.',
         ]);
 
         $data['oib'] = $normalizedOib !== '' ? $normalizedOib : null;
         $data['country'] = $data['country'] ?: 'Hrvatska';
         $data['is_active'] = $request->boolean('is_active', true);
+
         $data['is_contract_client'] = $request->boolean('is_contract_client', false);
+        $data['inventory_enabled'] = $request->boolean('inventory_enabled', false);
+        $data['is_internal'] = $request->boolean('is_internal', false);
 
         if (! $data['is_contract_client']) {
             $data['contract_status'] = null;
@@ -434,6 +469,11 @@ class PartnerController extends Controller
             $data['contract_end_date'] = null;
             $data['contract_notes'] = null;
             $data['contract_service_ids'] = [];
+        }
+
+        if (! $data['inventory_enabled']) {
+            $data['inventory_mode'] = null;
+            $data['inventory_partner_key'] = null;
         }
 
         return $data;

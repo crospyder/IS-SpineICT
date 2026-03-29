@@ -10,6 +10,7 @@
     $credentials = $partner->credentials ?? collect();
     $obligations = $partner->obligations ?? collect();
     $contractServices = $partner->contractServices ?? collect();
+    $inventoryItems = $partner->inventoryItems ?? collect();
 @endphp
 
 <div class="max-w-7xl">
@@ -157,6 +158,76 @@
                         {{ $contractServices->count() }}
                     </div>
                 </div>
+                <div class="app-card p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Inventory</h3>
+
+        <div class="flex gap-2 flex-wrap">
+            @if($partner->inventory_enabled)
+                <span class="app-badge badge-ok">Uključen</span>
+            @else
+                <span class="app-badge badge-overdue">Isključen</span>
+            @endif
+
+            @if($partner->inventory_mode)
+                <span class="app-badge badge-soon">
+                    Mode: {{ $partner->inventory_mode }}
+                </span>
+            @endif
+
+            @if($partner->is_internal)
+                <span class="app-badge badge-soon">Interni sustav</span>
+            @endif
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div>
+            <div class="app-muted text-sm mb-1">Partner key</div>
+            <div>{{ $partner->inventory_partner_key ?: '-' }}</div>
+        </div>
+
+        <div>
+            <div class="app-muted text-sm mb-1">Ukupno inventory stavki</div>
+            <div>{{ $inventoryItems->count() }}</div>
+        </div>
+    </div>
+
+    @if($inventoryItems->count())
+        <div class="overflow-hidden">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>Model</th>
+                        <th>Serijski broj</th>
+                        <th>Izvor</th>
+                        <th>Zadnji seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($inventoryItems as $item)
+                        <tr class="app-row">
+                            <td>{{ $item->hostname ?: '-' }}</td>
+                            <td>{{ $item->manufacturer }} {{ $item->model }}</td>
+                            <td>{{ $item->serial_number ?: '-' }}</td>
+                            <td>
+                                @if($item->source === 'agent')
+                                    <span class="app-badge badge-ok">Agent</span>
+                                @else
+                                    <span class="app-badge badge-soon">Manual</span>
+                                @endif
+                            </td>
+                            <td>{{ optional($item->last_seen_at)->format('d.m.Y. H:i') ?: '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @else
+        <div class="app-muted">Nema inventory stavki za ovog partnera.</div>
+    @endif
+</div>
             </div>
         </div>
     </div>

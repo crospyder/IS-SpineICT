@@ -21,20 +21,30 @@ class Partner extends Model
         'country',
         'notes',
         'is_active',
+
         'is_contract_client',
         'contract_status',
         'contract_start_date',
         'contract_end_date',
         'contract_notes',
+
+        'inventory_enabled',
+        'inventory_mode',
+        'inventory_partner_key',
+        'is_internal',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+
             'is_contract_client' => 'boolean',
             'contract_start_date' => 'date',
             'contract_end_date' => 'date',
+
+            'inventory_enabled' => 'boolean',
+            'is_internal' => 'boolean',
         ];
     }
 
@@ -86,6 +96,11 @@ class Partner extends Model
         )->withTimestamps();
     }
 
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(InventoryItem::class)->latest();
+    }
+
     public function hasContractService(string $slug): bool
     {
         if (! $this->relationLoaded('contractServices')) {
@@ -93,5 +108,15 @@ class Partner extends Model
         }
 
         return $this->contractServices->contains('slug', $slug);
+    }
+
+    public function allowsAgentInventory(): bool
+    {
+        return $this->inventory_enabled && in_array($this->inventory_mode, ['agent', 'hybrid'], true);
+    }
+
+    public function allowsManualInventory(): bool
+    {
+        return $this->inventory_enabled && in_array($this->inventory_mode, ['manual', 'hybrid'], true);
     }
 }

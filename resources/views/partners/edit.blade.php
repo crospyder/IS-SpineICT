@@ -218,7 +218,65 @@
                 </div>
             </div>
         </div>
+<div class="app-card p-6">
+    <div class="mb-5">
+        <h3 class="text-base font-semibold">Inventory / Agent sync</h3>
+        <div class="text-sm app-muted mt-1">
+            Uključi inventory za partnera i definiraj koristi li ručni unos, agent sync ili oboje.
+        </div>
+    </div>
 
+    <div class="space-y-5">
+        <div class="flex flex-wrap gap-6">
+            <label class="inline-flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    name="inventory_enabled"
+                    id="inventory_enabled"
+                    value="1"
+                    {{ old('inventory_enabled', $partner->inventory_enabled) ? 'checked' : '' }}
+                >
+                <span>Inventory uključen</span>
+            </label>
+
+            <label class="inline-flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    name="is_internal"
+                    value="1"
+                    {{ old('is_internal', $partner->is_internal) ? 'checked' : '' }}
+                >
+                <span>Interni sustav</span>
+            </label>
+        </div>
+
+        <div id="inventory-fields" class="{{ old('inventory_enabled', $partner->inventory_enabled) ? '' : 'hidden' }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="app-form-group">
+                    <label class="app-label" for="inventory_mode">Inventory način rada</label>
+                    <select id="inventory_mode" name="inventory_mode" class="app-input">
+                        <option value="">-- Odaberi način --</option>
+                        <option value="manual" {{ old('inventory_mode', $partner->inventory_mode) === 'manual' ? 'selected' : '' }}>Manual</option>
+                        <option value="agent" {{ old('inventory_mode', $partner->inventory_mode) === 'agent' ? 'selected' : '' }}>Agent</option>
+                        <option value="hybrid" {{ old('inventory_mode', $partner->inventory_mode) === 'hybrid' ? 'selected' : '' }}>Hybrid</option>
+                    </select>
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label" for="inventory_partner_key">Inventory partner key</label>
+                    <input
+                        type="text"
+                        id="inventory_partner_key"
+                        name="inventory_partner_key"
+                        class="app-input"
+                        value="{{ old('inventory_partner_key', $partner->inventory_partner_key) }}"
+                        placeholder="npr. TEST-INV-001"
+                    >
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
         <div class="app-card p-6">
             <div class="mb-5">
                 <h3 class="text-base font-semibold">Dodatno</h3>
@@ -270,7 +328,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const countryInput = document.getElementById('country');
     const statusBox = document.getElementById('registry-status');
     const refreshButton = document.getElementById('refresh-from-sudreg');
+    const inventoryEnabledCheckbox = document.getElementById('inventory_enabled');
+const inventoryFields = document.getElementById('inventory-fields');
 
+const toggleInventoryFields = () => {
+    if (inventoryEnabledCheckbox.checked) {
+        inventoryFields.classList.remove('hidden');
+    } else {
+        inventoryFields.classList.add('hidden');
+    }
+};
+
+inventoryEnabledCheckbox.addEventListener('change', toggleInventoryFields);
+toggleInventoryFields();
     const contractClientCheckbox = document.getElementById('is_contract_client');
     const contractFields = document.getElementById('contract-fields');
 
