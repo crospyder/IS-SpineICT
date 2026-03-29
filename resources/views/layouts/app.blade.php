@@ -111,7 +111,7 @@
                 </form>
 
                 <div class="text-xs app-muted hidden xl:block">
-                    SpineICT OPS v0.2.2
+                    SpineICT OPS v0.3.1
                 </div>
             </div>
         </header>

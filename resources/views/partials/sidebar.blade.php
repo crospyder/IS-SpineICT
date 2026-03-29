@@ -26,6 +26,18 @@
         <x-nav-link href="{{ route('procurements.index') }}" :active="request()->routeIs('procurements.*')">
             Nabava / Kalkulacije
         </x-nav-link>
+
+        @if(auth()->user()?->is_admin)
+            <div class="pt-4 mt-4 border-t border-white/10">
+                <div class="px-3 pb-2 text-[11px] uppercase tracking-wider app-muted">
+                    Administracija
+                </div>
+
+                <x-nav-link href="{{ route('users.index') }}" :active="request()->routeIs('users.*')">
+                    Korisnici
+                </x-nav-link>
+            </div>
+        @endif
     </nav>
 
 </aside>
