@@ -27,6 +27,10 @@
             Nabava / Kalkulacije
         </x-nav-link>
 
+        <x-nav-link href="{{ route('inventory.index') }}" :active="request()->routeIs('inventory.*')">
+            Inventar
+        </x-nav-link>
+
         @if(auth()->user()?->is_admin)
             <div class="pt-4 mt-4 border-t border-white/10">
                 <div class="px-3 pb-2 text-[11px] uppercase tracking-wider app-muted">

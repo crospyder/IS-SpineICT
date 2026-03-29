@@ -1,99 +1,104 @@
 @extends('layouts.app')
 
-@section('title', $item ? 'Uredi inventory uređaj' : 'Dodaj inventory uređaj')
+@section('title', $item ? 'Uredi uređaj' : 'Dodaj uređaj')
 
 @section('content')
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
+
+<div class="max-w-7xl">
+    <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-2xl font-semibold text-slate-900">
-                {{ $item ? 'Uredi inventory uređaj' : 'Dodaj inventory uređaj' }}
-            </h1>
-            <p class="text-sm text-slate-500 mt-1">
-                Ručni unos i uređivanje inventory zapisa.
-            </p>
+            <h2 class="text-lg font-semibold">
+                {{ $item ? 'Uredi uređaj' : 'Dodaj uređaj' }}
+            </h2>
+            <div class="text-sm app-muted mt-1">
+                Ručni unos i uređivanje inventarnog zapisa
+            </div>
         </div>
 
-        <a href="{{ route('inventory.index') }}"
-           class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <a href="{{ route('inventory.index') }}" class="app-button-secondary">
             Natrag
         </a>
     </div>
 
-    @if ($errors->any())
-        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <div class="font-medium mb-2">Provjeri unos:</div>
-            <ul class="list-disc pl-5 space-y-1">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="app-card p-6">
         <form method="POST" action="{{ $item ? route('inventory.update', $item->id) : route('inventory.store') }}">
             @csrf
             @if($item)
                 @method('PUT')
             @endif
 
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 @foreach($columns as $column)
-                    <div>
-                        <label for="{{ $column }}" class="mb-1 block text-sm font-medium text-slate-700">
-                            {{ ucwords(str_replace('_', ' ', $column)) }}
-                        </label>
+                    @php
+                        $labelMap = [
+                            'partner_id' => 'Partner',
+                            'hostname' => 'Naziv uređaja / hostname',
+                            'device_name' => 'Naziv uređaja',
+                            'agent_device_id' => 'Identifikator uređaja',
+                            'serial_number' => 'Serijski broj',
+                            'manufacturer' => 'Proizvođač',
+                            'model' => 'Model',
+                            'os_name' => 'Operacijski sustav',
+                            'os_version' => 'Verzija OS-a',
+                            'primary_ipv4' => 'IP adresa',
+                            'primary_mac' => 'MAC adresa',
+                            'inventory_mode' => 'Način inventure',
+                            'inventory_enabled' => 'Inventura uključena',
+                            'is_internal' => 'Interni uređaj',
+                            'inventory_partner_key' => 'Partner inventory ključ',
+                            'last_seen_at' => 'Zadnje viđeno',
+                        ];
+
+                        $label = $labelMap[$column] ?? ucwords(str_replace('_', ' ', $column));
+                    @endphp
+
+                    <div class="app-form-group">
+                        <label class="app-label" for="{{ $column }}">{{ $label }}</label>
 
                         @if($column === 'partner_id')
-                            <select
-                                id="{{ $column }}"
-                                name="{{ $column }}"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                            >
+                            <select name="{{ $column }}" id="{{ $column }}" class="app-input">
                                 <option value="">— Odaberi partnera —</option>
                                 @foreach($partners as $partner)
-                                    <option value="{{ $partner->id }}" @selected((string) old($column, $item->{$column} ?? '') === (string) $partner->id)>
+                                    <option value="{{ $partner->id }}" {{ (string) old($column, $item->{$column} ?? '') === (string) $partner->id ? 'selected' : '' }}>
                                         {{ $partner->name }}
                                     </option>
                                 @endforeach
                             </select>
+
                         @elseif(in_array($column, ['inventory_enabled', 'is_internal']))
-                            <select
-                                id="{{ $column }}"
-                                name="{{ $column }}"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                            >
-                                <option value="0" @selected((string) old($column, $item->{$column} ?? '0') === '0')>Ne</option>
-                                <option value="1" @selected((string) old($column, $item->{$column} ?? '0') === '1')>Da</option>
+                            <select name="{{ $column }}" id="{{ $column }}" class="app-input">
+                                <option value="0" {{ (string) old($column, $item->{$column} ?? '0') === '0' ? 'selected' : '' }}>Ne</option>
+                                <option value="1" {{ (string) old($column, $item->{$column} ?? '0') === '1' ? 'selected' : '' }}>Da</option>
                             </select>
+
                         @else
                             <input
                                 type="text"
-                                id="{{ $column }}"
                                 name="{{ $column }}"
+                                id="{{ $column }}"
+                                class="app-input"
                                 value="{{ old($column, $item->{$column} ?? '') }}"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                             >
                         @endif
+
+                        @error($column)
+                            <div class="text-sm text-red-400 mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 @endforeach
             </div>
 
-            <div class="mt-6 flex items-center gap-3">
-                <button
-                    type="submit"
-                    class="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                >
+            <div class="mt-6 flex gap-3">
+                <button type="submit" class="app-button">
                     Spremi
                 </button>
 
-                <a href="{{ route('inventory.index') }}"
-                   class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <a href="{{ route('inventory.index') }}" class="app-button-secondary">
                     Odustani
                 </a>
             </div>
         </form>
     </div>
 </div>
+
 @endsection
