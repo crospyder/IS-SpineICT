@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContractServiceType;
 use App\Models\Partner;
 use App\Services\SudregService;
 use App\Support\ActivityLogger;
@@ -34,6 +35,14 @@ class PartnerController extends Controller
             $query->where('is_active', 0);
         }
 
+        if (request('contract') === '1') {
+            $query->where('is_contract_client', 1);
+        }
+
+        if (request('contract') === '0') {
+            $query->where('is_contract_client', 0);
+        }
+
         $partners = $query
             ->orderBy('name')
             ->get();
@@ -43,9 +52,16 @@ class PartnerController extends Controller
 
     public function create(Request $request)
     {
+        $contractServiceTypes = ContractServiceType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         return view('partners.create', [
             'returnTo' => $request->query('return_to'),
             'returnPartnerField' => $request->query('return_partner_field', 'partner_id'),
+            'contractServiceTypes' => $contractServiceTypes,
         ]);
     }
 
@@ -53,7 +69,14 @@ class PartnerController extends Controller
     {
         $data = $this->validatePartner($request);
 
+        $contractServiceIds = $data['contract_service_ids'] ?? [];
+        unset($data['contract_service_ids']);
+
         $partner = Partner::create($data);
+
+        if ($partner->is_contract_client) {
+            $partner->contractServices()->sync($contractServiceIds);
+        }
 
         ActivityLogger::log(
             subject: $partner,
@@ -73,6 +96,12 @@ class PartnerController extends Controller
                 'country' => $partner->country,
                 'notes' => $partner->notes,
                 'is_active' => $partner->is_active,
+                'is_contract_client' => $partner->is_contract_client,
+                'contract_status' => $partner->contract_status,
+                'contract_start_date' => optional($partner->contract_start_date)->format('Y-m-d'),
+                'contract_end_date' => optional($partner->contract_end_date)->format('Y-m-d'),
+                'contract_notes' => $partner->contract_notes,
+                'contract_service_ids' => $contractServiceIds,
             ]
         );
 
@@ -110,6 +139,9 @@ class PartnerController extends Controller
                     END
                 ")->orderBy('due_date');
             },
+            'contractServices' => function ($query) {
+                $query->orderBy('sort_order')->orderBy('name');
+            },
         ])->findOrFail($id);
 
         return view('partners.show', compact('partner'));
@@ -117,21 +149,44 @@ class PartnerController extends Controller
 
     public function edit(string $id)
     {
-        $partner = Partner::findOrFail($id);
+        $partner = Partner::with('contractServices')->findOrFail($id);
 
-        return view('partners.edit', compact('partner'));
+        $contractServiceTypes = ContractServiceType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return view('partners.edit', compact('partner', 'contractServiceTypes'));
     }
 
     public function update(Request $request, string $id)
     {
-        $partner = Partner::findOrFail($id);
+        $partner = Partner::with('contractServices')->findOrFail($id);
         $data = $this->validatePartner($request, $partner);
 
-        $before = $partner->fresh()->toArray();
+        $contractServiceIds = $data['contract_service_ids'] ?? [];
+        unset($data['contract_service_ids']);
+
+        $before = $partner->fresh()->load('contractServices')->toArray();
+        $beforeContractServiceIds = $partner->contractServices
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
 
         $partner->update($data);
 
-        $after = $partner->fresh()->toArray();
+        if ($partner->is_contract_client) {
+            $partner->contractServices()->sync($contractServiceIds);
+        } else {
+            $partner->contractServices()->detach();
+            $contractServiceIds = [];
+        }
+
+        $partner->load('contractServices');
+        $after = $partner->fresh()->load('contractServices')->toArray();
 
         [$oldValues, $newValues] = ActivityLogger::diff($before, $after, [
             'name',
@@ -146,7 +201,24 @@ class PartnerController extends Controller
             'country',
             'notes',
             'is_active',
+            'is_contract_client',
+            'contract_status',
+            'contract_start_date',
+            'contract_end_date',
+            'contract_notes',
         ]);
+
+        $afterContractServiceIds = $partner->contractServices
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
+
+        if ($beforeContractServiceIds !== $afterContractServiceIds) {
+            $oldValues['contract_service_ids'] = $beforeContractServiceIds;
+            $newValues['contract_service_ids'] = $afterContractServiceIds;
+        }
 
         if (!empty($newValues)) {
             $event = 'updated';
@@ -172,7 +244,7 @@ class PartnerController extends Controller
 
     public function destroy(string $id)
     {
-        $partner = Partner::findOrFail($id);
+        $partner = Partner::with('contractServices')->findOrFail($id);
 
         ActivityLogger::log(
             subject: $partner,
@@ -192,6 +264,12 @@ class PartnerController extends Controller
                 'country' => $partner->country,
                 'notes' => $partner->notes,
                 'is_active' => $partner->is_active,
+                'is_contract_client' => $partner->is_contract_client,
+                'contract_status' => $partner->contract_status,
+                'contract_start_date' => optional($partner->contract_start_date)->format('Y-m-d'),
+                'contract_end_date' => optional($partner->contract_end_date)->format('Y-m-d'),
+                'contract_notes' => $partner->contract_notes,
+                'contract_service_ids' => $partner->contractServices->pluck('id')->all(),
             ]
         );
 
@@ -331,14 +409,32 @@ class PartnerController extends Controller
             'country' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
+
+            'is_contract_client' => ['nullable', 'boolean'],
+            'contract_status' => ['nullable', 'string', Rule::in(['active', 'pending', 'paused', 'expired'])],
+            'contract_start_date' => ['nullable', 'date'],
+            'contract_end_date' => ['nullable', 'date', 'after_or_equal:contract_start_date'],
+            'contract_notes' => ['nullable', 'string'],
+            'contract_service_ids' => ['nullable', 'array'],
+            'contract_service_ids.*' => ['integer', 'exists:contract_service_types,id'],
         ], [
             'oib.size' => 'OIB mora imati točno 11 znamenki.',
             'oib.unique' => 'Partner s tim OIB-om već postoji.',
+            'contract_end_date.after_or_equal' => 'Datum završetka ugovora mora biti isti ili nakon početka ugovora.',
         ]);
 
         $data['oib'] = $normalizedOib !== '' ? $normalizedOib : null;
         $data['country'] = $data['country'] ?: 'Hrvatska';
         $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_contract_client'] = $request->boolean('is_contract_client', false);
+
+        if (! $data['is_contract_client']) {
+            $data['contract_status'] = null;
+            $data['contract_start_date'] = null;
+            $data['contract_end_date'] = null;
+            $data['contract_notes'] = null;
+            $data['contract_service_ids'] = [];
+        }
 
         return $data;
     }

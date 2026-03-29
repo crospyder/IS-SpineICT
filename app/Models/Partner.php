@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Partner extends Model
@@ -20,12 +21,20 @@ class Partner extends Model
         'country',
         'notes',
         'is_active',
+        'is_contract_client',
+        'contract_status',
+        'contract_start_date',
+        'contract_end_date',
+        'contract_notes',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'is_contract_client' => 'boolean',
+            'contract_start_date' => 'date',
+            'contract_end_date' => 'date',
         ];
     }
 
@@ -67,5 +76,22 @@ class Partner extends Model
     public function workLogs(): HasMany
     {
         return $this->hasMany(WorkLog::class);
+    }
+
+    public function contractServices(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ContractServiceType::class,
+            'partner_contract_services'
+        )->withTimestamps();
+    }
+
+    public function hasContractService(string $slug): bool
+    {
+        if (! $this->relationLoaded('contractServices')) {
+            $this->load('contractServices');
+        }
+
+        return $this->contractServices->contains('slug', $slug);
     }
 }

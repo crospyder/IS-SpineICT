@@ -4,6 +4,14 @@
 
 @section('content')
 
+@php
+    $services = $partner->services ?? collect();
+    $contacts = $partner->contacts ?? collect();
+    $credentials = $partner->credentials ?? collect();
+    $obligations = $partner->obligations ?? collect();
+    $contractServices = $partner->contractServices ?? collect();
+@endphp
+
 <div class="max-w-7xl">
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -24,24 +32,25 @@
         </div>
     </div>
 
-    {{-- GORNJI BLOK --}}
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-
         <div class="app-card p-6 xl:col-span-2">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-lg font-semibold">Osnovni podaci</h3>
 
-                <div>
+                <div class="flex gap-2 flex-wrap justify-end">
                     @if($partner->is_active)
                         <span class="app-badge badge-ok">Aktivan</span>
                     @else
                         <span class="app-badge badge-overdue">Neaktivan</span>
                     @endif
+
+                    @if($partner->is_contract_client)
+                        <span class="app-badge badge-soon">Ugovorni klijent</span>
+                    @endif
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                 <div>
                     <div class="app-muted text-sm mb-1">Naziv</div>
                     <div class="font-medium">{{ $partner->name ?: '-' }}</div>
@@ -113,40 +122,117 @@
             <div class="space-y-4">
                 <div>
                     <div class="app-muted text-sm mb-1">Ukupno usluga</div>
-                    <div class="text-2xl font-semibold">{{ $partner->services->count() }}</div>
+                    <div class="text-2xl font-semibold">{{ $services->count() }}</div>
                 </div>
 
                 <div>
                     <div class="app-muted text-sm mb-1">Aktivne usluge</div>
                     <div class="text-2xl font-semibold">
-                        {{ $partner->services->where('is_active', true)->count() }}
+                        {{ $services->where('is_active', true)->count() }}
                     </div>
                 </div>
 
                 <div>
                     <div class="app-muted text-sm mb-1">Ukupno obveza</div>
-                    <div class="text-2xl font-semibold">{{ $partner->obligations->count() }}</div>
+                    <div class="text-2xl font-semibold">{{ $obligations->count() }}</div>
                 </div>
 
                 <div>
                     <div class="app-muted text-sm mb-1">Otvorene obveze</div>
                     <div class="text-2xl font-semibold">
-                        {{ $partner->obligations->filter(fn($o) => !$o->isCompleted())->count() }}
+                        {{ $obligations->filter(fn($o) => !$o->isCompleted())->count() }}
                     </div>
                 </div>
 
                 <div>
                     <div class="app-muted text-sm mb-1">Obveze koje kasne</div>
                     <div class="text-2xl font-semibold">
-                        {{ $partner->obligations->filter(fn($o) => $o->isOverdue())->count() }}
+                        {{ $obligations->filter(fn($o) => $o->isOverdue())->count() }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="app-muted text-sm mb-1">Ugovorne usluge</div>
+                    <div class="text-2xl font-semibold">
+                        {{ $contractServices->count() }}
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
-    {{-- USLUGE --}}
+    @if($partner->is_contract_client)
+        <div class="app-card p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Ugovorni odnos</h3>
+
+                <a href="{{ route('partners.edit', $partner) }}" class="app-button-secondary">
+                    Uredi ugovor
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div>
+                    <div class="app-muted text-sm mb-1">Status ugovora</div>
+                    <div>
+                        @php
+                            $contractStatusLabels = [
+                                'active' => 'Aktivan',
+                                'pending' => 'U pripremi',
+                                'paused' => 'Pauziran',
+                                'expired' => 'Istekao',
+                            ];
+                        @endphp
+
+                        {{ $contractStatusLabels[$partner->contract_status] ?? '-' }}
+                    </div>
+                </div>
+
+                <div>
+                    <div class="app-muted text-sm mb-1">Početak ugovora</div>
+                    <div>{{ optional($partner->contract_start_date)->format('d.m.Y.') ?: '-' }}</div>
+                </div>
+
+                <div>
+                    <div class="app-muted text-sm mb-1">Završetak ugovora</div>
+                    <div>{{ optional($partner->contract_end_date)->format('d.m.Y.') ?: '-' }}</div>
+                </div>
+
+                <div>
+                    <div class="app-muted text-sm mb-1">Broj ugovornih usluga</div>
+                    <div>{{ $contractServices->count() }}</div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <div class="app-muted text-sm mb-1">Bilješke uz ugovor</div>
+                    <div>{{ $partner->contract_notes ?: '-' }}</div>
+                </div>
+            </div>
+
+            <div>
+                <div class="app-muted text-sm mb-3">Uključene usluge</div>
+
+                @if($contractServices->count())
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @foreach($contractServices as $contractService)
+                            <div class="app-card p-4">
+                                <div class="font-medium">{{ $contractService->name }}</div>
+
+                                @if($contractService->description)
+                                    <div class="text-sm app-muted mt-1">
+                                        {{ $contractService->description }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="app-muted">Nema odabranih ugovornih usluga.</div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     <div class="app-card p-6 mb-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">Usluge</h3>
@@ -156,7 +242,7 @@
             </a>
         </div>
 
-        @if($partner->services->count())
+        @if($services->count())
             <div class="overflow-hidden">
                 <table class="app-table">
                     <thead>
@@ -170,7 +256,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($partner->services as $service)
+                        @foreach($services as $service)
                             <tr class="app-row">
                                 <td>
                                     <a href="{{ route('partner-services.show', $service) }}" class="app-link">
@@ -179,7 +265,6 @@
                                 </td>
 
                                 <td>{{ $service->service_type ?: '-' }}</td>
-
                                 <td>{{ $service->domain_name ?: '-' }}</td>
 
                                 <td>
@@ -234,7 +319,7 @@
             <div class="app-muted">Nema evidentiranih usluga.</div>
         @endif
     </div>
-    {{-- KONTAKTI --}}
+
     <div class="app-card p-6 mb-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">Kontakti</h3>
@@ -245,7 +330,7 @@
             </a>
         </div>
 
-        @if($partner->contacts->count())
+        @if($contacts->count())
             <div class="overflow-hidden">
                 <table class="app-table">
                     <thead>
@@ -259,10 +344,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($partner->contacts as $contact)
+                        @foreach($contacts as $contact)
                             <tr class="app-row">
                                 <td>{{ $contact->name }}</td>
-
                                 <td>{{ $contact->position ?: '-' }}</td>
 
                                 <td>
@@ -313,91 +397,90 @@
             <div class="app-muted">Nema kontakata.</div>
         @endif
     </div>
-    {{-- CREDENTIALS --}}
-<div class="app-card p-6 mb-6">
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold">Pristupi</h3>
 
-        <a href="{{ route('credentials.create', ['partner_id' => $partner->id]) }}"
-           class="app-button-secondary">
-            Dodaj pristup
-        </a>
-    </div>
+    <div class="app-card p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Pristupi</h3>
 
-    @if($partner->credentials->count())
-        <table class="app-table">
-            <thead>
-                <tr>
-                    <th>Naziv</th>
-                    <th>Korisničko ime</th>
-                    <th>Lozinka</th>
-                    <th>URL</th>
-                    <th class="text-right">Akcije</th>
-                </tr>
-            </thead>
+            <a href="{{ route('credentials.create', ['partner_id' => $partner->id]) }}"
+               class="app-button-secondary">
+                Dodaj pristup
+            </a>
+        </div>
 
-            <tbody>
-                @foreach($partner->credentials as $c)
-                    <tr class="app-row">
-                        <td>{{ $c->title }}</td>
-
-                        <td>{{ $c->username ?: '-' }}</td>
-
-                        <td>
-    <div class="flex items-center gap-2 justify-start">
-        <span id="credential-password-{{ $c->id }}" class="app-muted">********</span>
-
-        <button type="button"
-                class="app-button-secondary"
-                onclick="revealCredentialPassword({{ $c->id }})">
-            Prikaži
-        </button>
-
-        <button type="button"
-                class="app-button-secondary"
-                onclick="copyCredentialPassword({{ $c->id }})">
-            Kopiraj
-        </button>
-    </div>
-</td>
-
-                        <td>
-                            @if($c->url)
-                                <a href="{{ $c->url }}" target="_blank" class="app-link">
-                                    Otvori
-                                </a>
-                            @else
-                                -
-                            @endif
-                        </td>
-
-                        <td class="text-right">
-                            <div class="flex justify-end gap-2">
-                                <a href="{{ route('credentials.edit', $c) }}"
-                                   class="app-button-secondary">
-                                    Uredi
-                                </a>
-
-                                <form method="POST"
-                                      action="{{ route('credentials.destroy', $c) }}">
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button class="app-button-secondary">
-                                        Obriši
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
+        @if($credentials->count())
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Naziv</th>
+                        <th>Korisničko ime</th>
+                        <th>Lozinka</th>
+                        <th>URL</th>
+                        <th class="text-right">Akcije</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @else
-        <div class="app-muted">Nema pristupa.</div>
-    @endif
-</div>
-    {{-- OBVEZE --}}
+                </thead>
+
+                <tbody>
+                    @foreach($credentials as $c)
+                        <tr class="app-row">
+                            <td>{{ $c->title }}</td>
+                            <td>{{ $c->username ?: '-' }}</td>
+
+                            <td>
+                                <div class="flex items-center gap-2 justify-start">
+                                    <span id="credential-password-{{ $c->id }}" class="app-muted">********</span>
+
+                                    <button type="button"
+                                            class="app-button-secondary"
+                                            onclick="revealCredentialPassword({{ $c->id }})">
+                                        Prikaži
+                                    </button>
+
+                                    <button type="button"
+                                            class="app-button-secondary"
+                                            onclick="copyCredentialPassword({{ $c->id }})">
+                                        Kopiraj
+                                    </button>
+                                </div>
+                            </td>
+
+                            <td>
+                                @if($c->url)
+                                    <a href="{{ $c->url }}" target="_blank" class="app-link">
+                                        Otvori
+                                    </a>
+                                @else
+                                    -
+                                @endif
+                            </td>
+
+                            <td class="text-right">
+                                <div class="flex justify-end gap-2">
+                                    <a href="{{ route('credentials.edit', $c) }}"
+                                       class="app-button-secondary">
+                                        Uredi
+                                    </a>
+
+                                    <form method="POST"
+                                          action="{{ route('credentials.destroy', $c) }}">
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button class="app-button-secondary">
+                                            Obriši
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="app-muted">Nema pristupa.</div>
+        @endif
+    </div>
+
     <div class="app-card p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">Obveze</h3>
@@ -407,7 +490,7 @@
             </a>
         </div>
 
-        @if($partner->obligations->count())
+        @if($obligations->count())
             <div class="overflow-hidden">
                 <table class="app-table">
                     <thead>
@@ -421,7 +504,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($partner->obligations as $obligation)
+                        @foreach($obligations as $obligation)
                             <tr class="app-row">
                                 <td>
                                     <a href="{{ route('obligations.show', $obligation) }}" class="app-link">
@@ -501,6 +584,7 @@
         @endif
     </div>
 </div>
+
 <script>
 async function fetchCredentialPassword(id) {
     const response = await fetch(`/credentials/${id}/reveal`, {
@@ -540,11 +624,10 @@ async function copyCredentialPassword(id) {
         await navigator.clipboard.writeText(data.password ?? '');
 
         const target = document.getElementById(`credential-password-${id}`);
-        const original = target.textContent;
-
         target.textContent = 'Kopirano';
+
         setTimeout(() => {
-            target.textContent = original === 'Kopirano' ? '********' : original;
+            target.textContent = '********';
         }, 1500);
     } catch (error) {
         alert('Greška pri kopiranju lozinke.');

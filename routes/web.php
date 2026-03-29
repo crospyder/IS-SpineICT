@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ObligationController;
 use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\PartnerDocumentController;
 use App\Http\Controllers\PartnerServiceController;
 use App\Http\Controllers\PartnerContactController;
 use App\Http\Controllers\CredentialController;
@@ -36,6 +37,17 @@ Route::middleware('auth')->group(function () {
     Route::resource('partner-services', PartnerServiceController::class);
     Route::resource('obligations', ObligationController::class);
 
+    Route::get('/partner-documents/create', [PartnerDocumentController::class, 'create'])
+        ->name('partner-documents.create');
+    Route::post('/partner-documents', [PartnerDocumentController::class, 'store'])
+        ->name('partner-documents.store');
+    Route::get('/partner-documents/{partnerDocument}/view', [PartnerDocumentController::class, 'view'])
+        ->name('partner-documents.view');
+    Route::get('/partner-documents/{partnerDocument}/download', [PartnerDocumentController::class, 'download'])
+        ->name('partner-documents.download');
+    Route::delete('/partner-documents/{partnerDocument}', [PartnerDocumentController::class, 'destroy'])
+        ->name('partner-documents.destroy');
+
     Route::patch('/obligations/{obligation}/complete', [ObligationController::class, 'complete'])
         ->name('obligations.complete');
 
@@ -49,7 +61,6 @@ Route::middleware('auth')->group(function () {
         ->name('logout');
 
     Route::resource('procurements', \App\Http\Controllers\ProcurementController::class);
-
     Route::post('/procurements/{procurement}/items', [\App\Http\Controllers\ProcurementController::class, 'storeItem'])
         ->name('procurements.items.store');
 

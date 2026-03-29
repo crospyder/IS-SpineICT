@@ -39,25 +39,25 @@
 
                     <div class="absolute right-0 top-full mt-2 w-[520px] max-w-[92vw] overflow-x-hidden app-card p-4 shadow-2xl z-50">
                         <div class="flex items-start justify-between gap-3 mb-3">
-    <div>
-        <div class="text-sm font-semibold">Aktivna upozorenja</div>
-        <div class="text-xs app-muted">
-            Kasni: {{ $topbarNotificationOverdueCount ?? 0 }} · Danas: {{ $topbarNotificationTodayCount ?? 0 }}
-        </div>
-    </div>
+                            <div>
+                                <div class="text-sm font-semibold">Aktivna upozorenja</div>
+                                <div class="text-xs app-muted">
+                                    Kasni: {{ $topbarNotificationOverdueCount ?? 0 }} · Danas: {{ $topbarNotificationTodayCount ?? 0 }}
+                                </div>
+                            </div>
 
-    <div class="flex flex-col items-end gap-1 text-xs">
-        <a href="{{ route('dashboard', ['alerts' => 'all']) }}" class="app-link">
-            Sve
-        </a>
-        <a href="{{ route('dashboard', ['alerts' => 'overdue']) }}" class="app-link">
-            Samo kasni
-        </a>
-        <a href="{{ route('dashboard', ['alerts' => 'today']) }}" class="app-link">
-            Samo danas
-        </a>
-    </div>
-</div>
+                            <div class="flex flex-col items-end gap-1 text-xs">
+                                <a href="{{ route('dashboard', ['alerts' => 'all']) }}" class="app-link">
+                                    Sve
+                                </a>
+                                <a href="{{ route('dashboard', ['alerts' => 'overdue']) }}" class="app-link">
+                                    Samo kasni
+                                </a>
+                                <a href="{{ route('dashboard', ['alerts' => 'today']) }}" class="app-link">
+                                    Samo danas
+                                </a>
+                            </div>
+                        </div>
 
                         @if(($topbarNotificationItems ?? collect())->count())
                             <div class="flex flex-col gap-3 max-h-96 overflow-y-auto overflow-x-hidden pr-1">
@@ -118,6 +118,37 @@
 
         <main class="flex-1 min-w-0 overflow-y-auto app-main">
             <div class="w-full max-w-none p-6">
+
+                @if(session('success'))
+                    <div class="app-card p-4 mb-6 border border-emerald-500/30 bg-emerald-500/10">
+                        <div class="text-sm font-medium text-emerald-300">
+                            {{ session('success') }}
+                        </div>
+                    </div>
+                @endif
+
+                @if(session('status'))
+                    <div class="app-card p-4 mb-6 border border-emerald-500/30 bg-emerald-500/10">
+                        <div class="text-sm font-medium text-emerald-300">
+                            {{ session('status') }}
+                        </div>
+                    </div>
+                @endif
+
+                @if($errors->any())
+                    <div class="app-card p-4 mb-6 border border-red-500/30 bg-red-500/10">
+                        <div class="text-sm font-medium text-red-300 mb-2">
+                            Provjeri unesene podatke.
+                        </div>
+
+                        <ul class="text-sm space-y-1 text-red-200">
+                            @foreach($errors->all() as $error)
+                                <li>— {{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 @yield('content')
             </div>
         </main>

@@ -137,6 +137,102 @@
 
         <div class="app-card p-6">
             <div class="mb-5">
+                <h3 class="text-base font-semibold">Ugovorni klijent</h3>
+                <div class="text-sm app-muted mt-1">
+                    Označi ako partner ima aktivan ugovorni odnos i odaberi koje usluge pružate.
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <div class="app-form-group">
+                    <label class="inline-flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            name="is_contract_client"
+                            id="is_contract_client"
+                            value="1"
+                            {{ old('is_contract_client') ? 'checked' : '' }}
+                        >
+                        <span>Ovo je ugovorni klijent</span>
+                    </label>
+                </div>
+
+                <div id="contract-fields" class="{{ old('is_contract_client') ? '' : 'hidden' }}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="app-form-group">
+                            <label class="app-label" for="contract_status">Status ugovora</label>
+                            <select id="contract_status" name="contract_status" class="app-input">
+                                <option value="">-- Odaberi status --</option>
+                                <option value="active" {{ old('contract_status') === 'active' ? 'selected' : '' }}>Aktivan</option>
+                                <option value="pending" {{ old('contract_status') === 'pending' ? 'selected' : '' }}>U pripremi</option>
+                                <option value="paused" {{ old('contract_status') === 'paused' ? 'selected' : '' }}>Pauziran</option>
+                                <option value="expired" {{ old('contract_status') === 'expired' ? 'selected' : '' }}>Istekao</option>
+                            </select>
+                        </div>
+
+                        <div></div>
+
+                        <div class="app-form-group">
+                            <label class="app-label" for="contract_start_date">Početak ugovora</label>
+                            <input
+                                type="date"
+                                id="contract_start_date"
+                                name="contract_start_date"
+                                class="app-input"
+                                value="{{ old('contract_start_date') }}"
+                            >
+                        </div>
+
+                        <div class="app-form-group">
+                            <label class="app-label" for="contract_end_date">Završetak ugovora</label>
+                            <input
+                                type="date"
+                                id="contract_end_date"
+                                name="contract_end_date"
+                                class="app-input"
+                                value="{{ old('contract_end_date') }}"
+                            >
+                        </div>
+
+                        <div class="app-form-group md:col-span-2">
+                            <label class="app-label" for="contract_notes">Bilješke uz ugovor</label>
+                            <textarea id="contract_notes" name="contract_notes" rows="3" class="app-textarea">{{ old('contract_notes') }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <div class="text-sm font-medium mb-3">Ugovorne usluge</div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach ($contractServiceTypes as $serviceType)
+                                <label class="app-card p-4 flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="contract_service_ids[]"
+                                        value="{{ $serviceType->id }}"
+                                        class="mt-1"
+                                        {{ in_array($serviceType->id, old('contract_service_ids', [])) ? 'checked' : '' }}
+                                    >
+
+                                    <div>
+                                        <div class="font-medium">{{ $serviceType->name }}</div>
+
+                                        @if ($serviceType->description)
+                                            <div class="text-sm app-muted mt-1">
+                                                {{ $serviceType->description }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card p-6">
+            <div class="mb-5">
                 <h3 class="text-base font-semibold">Dodatno</h3>
             </div>
 
@@ -191,6 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const lookupButton = document.getElementById('lookup-partner-by-oib');
     const clearButton = document.getElementById('clear-registry-fill');
+
+    const contractClientCheckbox = document.getElementById('is_contract_client');
+    const contractFields = document.getElementById('contract-fields');
+
+    const toggleContractFields = () => {
+        if (contractClientCheckbox.checked) {
+            contractFields.classList.remove('hidden');
+        } else {
+            contractFields.classList.add('hidden');
+        }
+    };
 
     const setStatus = (message, isError = false) => {
         statusBox.textContent = message || '';
@@ -266,6 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearButton.addEventListener('click', () => {
         clearRegistryFields();
     });
+
+    contractClientCheckbox.addEventListener('change', toggleContractFields);
+    toggleContractFields();
 });
 </script>
 

@@ -57,10 +57,10 @@
                 <td>{{ $partner->id }}</td>
 
                 <td>
-                    <a href="{{ route('partners.edit', $partner) }}" class="app-link">
-                        {{ $partner->name }}
-                    </a>
-                </td>
+    <a href="{{ route('partners.show', $partner) }}" class="app-link">
+        {{ $partner->name }}
+    </a>
+</td>
 
                 <td>{{ $partner->legal_name ?: '-' }}</td>
                 <td>{{ $partner->oib ?: '-' }}</td>

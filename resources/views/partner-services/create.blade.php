@@ -22,13 +22,12 @@
     <form action="{{ route('partner-services.store') }}" method="POST" class="space-y-6">
         @csrf
 
-        {{-- OSNOVNI PODACI --}}
+        <input type="hidden" name="status" value="{{ old('status', 'active') }}">
+
         <div class="app-card p-6 space-y-4">
             <div class="text-sm font-semibold">Osnovni podaci</div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {{-- PARTNER --}}
                 <div class="app-form-group">
                     <div class="flex items-center justify-between mb-2">
                         <label class="app-label mb-0">Partner *</label>
@@ -54,39 +53,76 @@
                     </select>
                 </div>
 
-                {{-- TIP --}}
                 <div class="app-form-group">
-                    <label class="app-label">Tip usluge</label>
-                    <input type="text" name="type" class="app-input" value="{{ old('type') }}" placeholder="npr. Hosting, Domena, Licenca">
+                    <label class="app-label">Tip usluge *</label>
+                    <input
+                        type="text"
+                        name="service_type"
+                        class="app-input"
+                        value="{{ old('service_type') }}"
+                        placeholder="npr. Hosting, Domena, Licenca"
+                        required
+                    >
                 </div>
 
-                {{-- NAZIV --}}
                 <div class="app-form-group md:col-span-2">
                     <label class="app-label">Naziv *</label>
-                    <input type="text" name="name" class="app-input" value="{{ old('name') }}" required>
+                    <input
+                        type="text"
+                        name="name"
+                        class="app-input"
+                        value="{{ old('name') }}"
+                        required
+                    >
                 </div>
 
-                {{-- PROVIDER --}}
                 <div class="app-form-group">
                     <label class="app-label">Provider</label>
-                    <input type="text" name="provider" class="app-input" value="{{ old('provider') }}">
+                    <input
+                        type="text"
+                        name="provider"
+                        class="app-input"
+                        value="{{ old('provider') }}"
+                    >
                 </div>
 
-                {{-- IDENTIFIKATOR --}}
                 <div class="app-form-group">
-                    <label class="app-label">Identifikator / domena</label>
-                    <input type="text" name="identifier" class="app-input" value="{{ old('identifier') }}">
+                    <label class="app-label">Domena / identifikator</label>
+                    <input
+                        type="text"
+                        name="domain_name"
+                        class="app-input"
+                        value="{{ old('domain_name') }}"
+                    >
                 </div>
 
+                <div class="app-form-group">
+                    <label class="app-label">Registrar</label>
+                    <input
+                        type="text"
+                        name="registrar"
+                        class="app-input"
+                        value="{{ old('registrar') }}"
+                    >
+                </div>
+
+                <div class="app-form-group">
+                    <label class="app-label">Način obnove</label>
+                    <input
+                        type="text"
+                        name="renewal_method"
+                        class="app-input"
+                        value="{{ old('renewal_method') }}"
+                        placeholder="npr. ručno, kartica, provider portal"
+                    >
+                </div>
             </div>
         </div>
 
-        {{-- DATUMI I STATUS --}}
         <div class="app-card p-6 space-y-4">
             <div class="text-sm font-semibold">Datumi i status</div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
                 <div class="app-form-group">
                     <label class="app-label">Početak</label>
                     <input type="date" name="starts_on" class="app-input" value="{{ old('starts_on') }}">
@@ -103,11 +139,9 @@
                         Aktivna usluga
                     </label>
                 </div>
-
             </div>
         </div>
 
-        {{-- OBNOVA --}}
         <div class="app-card p-6 space-y-4">
             <div class="flex items-center justify-between">
                 <div class="text-sm font-semibold">Obnova</div>
@@ -119,7 +153,6 @@
             </div>
 
             <div id="renewFields" class="grid grid-cols-1 md:grid-cols-2 gap-4 {{ old('auto_renew') ? '' : 'hidden' }}">
-
                 <div class="app-form-group">
                     <label class="app-label">Period</label>
                     <select name="renewal_period" class="app-select">
@@ -130,38 +163,18 @@
                 </div>
 
                 <div class="app-form-group">
-                    <label class="app-label">Podsjetnik</label>
-                    <select name="remind_days_before" class="app-select">
-                        <option value="">-- bez podsjetnika --</option>
-                        <option value="7" {{ old('remind_days_before') === '7' ? 'selected' : '' }}>7 dana</option>
-                        <option value="14" {{ old('remind_days_before') === '14' ? 'selected' : '' }}>14 dana</option>
-                        <option value="30" {{ old('remind_days_before') === '30' ? 'selected' : '' }}>30 dana</option>
-                    </select>
+                    <label class="app-label">Datum zadnje obnove</label>
+                    <input type="date" name="renewal_date" class="app-input" value="{{ old('renewal_date') }}">
                 </div>
-
             </div>
         </div>
 
-        {{-- NAPOMENE --}}
         <div class="app-card p-6 space-y-4">
             <div class="text-sm font-semibold">Napomene</div>
 
             <textarea name="notes" rows="4" class="app-textarea">{{ old('notes') }}</textarea>
         </div>
 
-        {{-- ERRORS --}}
-        @if ($errors->any())
-            <div class="app-card p-4 border border-red-500/30 bg-red-500/10">
-                <div class="font-medium mb-2">Greška:</div>
-                <ul class="text-sm space-y-1">
-                    @foreach ($errors->all() as $error)
-                        <li>— {{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        {{-- ACTIONS --}}
         <div class="flex justify-between items-center">
             <a href="{{ route('partner-services.index') }}" class="app-link text-sm">
                 Odustani
@@ -171,14 +184,12 @@
                 Spremi uslugu
             </button>
         </div>
-
     </form>
 
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
     const autoRenew = document.getElementById('auto_renew');
     const renewFields = document.getElementById('renewFields');
 
@@ -187,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     autoRenew.addEventListener('change', toggleRenew);
-
     toggleRenew();
 });
 </script>
